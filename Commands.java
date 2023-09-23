@@ -24,6 +24,25 @@ public class Commands extends HardwareMapping {
         Left
     }
 
+    public String getColor(int red, int green, int blue){
+        if(red > 3000 && green > 3000 && blue > 3000){
+            return "It's probably white";
+        }
+
+        if(red > 3000){
+            return "It's probably red";
+        }
+
+        if(green > 3000){
+            return "It's probably green";
+        }
+
+        if(blue > 3000){
+            return "It's probably blue";
+        }
+        return "I don't know";
+    }
+
     // Drive forward
     public void driveForward(double power, double distanceInInches, double timeout, Telemetry telemetry) {
         encoderDriveStraight(power, distanceInInches, timeout, telemetry);
