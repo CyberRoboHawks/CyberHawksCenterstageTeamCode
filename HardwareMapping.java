@@ -12,21 +12,27 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
 public class HardwareMapping {
+    public boolean hasArmMotors = false;
+    public boolean hasCamera = false;
+    public boolean hasDriveMotors = false;
+    public boolean hasGrabberServo = false;
+    public boolean hasLinearActuatorMotor = false;
+    public boolean hasPixelServo = false;
 
-    private boolean isReverse = false;
+    public boolean isReverse = false;
+
+    public DcMotor armMotorRight = null;
+    public DcMotor armMotorLeft = null;
     public DcMotor leftFrontMotor = null;
     public DcMotor leftBackMotor = null;
     public DcMotor rightFrontMotor = null;
     public DcMotor rightBackMotor = null;
+    public DcMotor linearActuatorMotor = null;
     public WebcamName webCam1 = null;
-   /* public TouchSensor liftMaxSensor = null;
-    public TouchSensor liftMinSensor = null;
-    public Servo grabberServo = null;*/
-
-//    public DcMotor liftMotorLeft = null;
-//    public DcMotor liftMotorRight = null;
-
+    public TouchSensor limitSwitchIn = null;
+    public TouchSensor limitSwitchOut = null;
     public CRServo pixelServo = null;
+    public Servo grabberServo = null;
 
     public BNO055IMU imu = null;
 
@@ -38,22 +44,46 @@ public class HardwareMapping {
         // Save reference to Hardware map
         hardwareMap = hardware;
 
-        // Define and Initialize Motors
-        webCam1 = setupWebcam("Webcam 1");
-        leftFrontMotor = setupMotor("leftFrontMotor", DcMotor.Direction.REVERSE, 0, true, true);
-        leftBackMotor = setupMotor("leftBackMotor", DcMotor.Direction.REVERSE, 0, true, true);
-        rightFrontMotor = setupMotor("rightFrontMotor", DcMotor.Direction.FORWARD, 0, true, true);
-        rightBackMotor = setupMotor("rightBackMotor", DcMotor.Direction.FORWARD, 0, true, true);
+        if (canGetDevice("armMotorRight"))
+            armMotorRight = setupMotor("armMotorRight", DcMotor.Direction.FORWARD, 0, false,true);
+        if (canGetDevice("armMotorLeft"))
+            armMotorLeft = setupMotor("armMotorLeft", DcMotor.Direction.REVERSE, 0, false,true);
+        hasArmMotors =  (canGetDevice("armMotorRight") && canGetDevice("armMotorLeft"));
 
-        pixelServo = setupCRServo("pixelServo", 0.00);
-        pixelServo.setDirection(DcMotorSimple.Direction.FORWARD);
+        if (canGetDevice("Webcam 1")){
+            webCam1 = setupWebcam("Webcam 1");
+            hasCamera = true;
+        }
 
-        //TODO setup lift and grabber motors
-//        grabberServo = setupServo("grabberServo", 0.05);
-//        liftMotorLeft = setupMotor("liftMotorLeft", DcMotor.Direction.FORWARD, 0, false, true);
-//        liftMotorRight = setupMotor("liftMotorRight", DcMotor.Direction.REVERSE, 0, false, true);
-//        liftMinSensor = hardwareMap.get(TouchSensor.class, "liftMin");
-//        liftMaxSensor = hardwareMap.get(TouchSensor.class, "liftMax");
+        if (canGetDevice("leftFrontMotor") && canGetDevice("leftBackMotor")
+                && canGetDevice("rightFrontMotor") && canGetDevice("rightBackMotor")){
+            leftFrontMotor = setupMotor("leftFrontMotor", DcMotor.Direction.REVERSE, 0, true,true);
+            leftBackMotor = setupMotor("leftBackMotor", DcMotor.Direction.REVERSE, 0, true,true);
+            rightFrontMotor = setupMotor("rightFrontMotor", DcMotor.Direction.FORWARD, 0, true,true);
+            rightBackMotor = setupMotor("rightBackMotor", DcMotor.Direction.FORWARD, 0, true,true);
+            hasDriveMotors = true;
+        }
+
+        if (canGetDevice("pixelServo")){
+            pixelServo = setupCRServo("pixelServo", 0.00);
+            pixelServo.setDirection(DcMotorSimple.Direction.FORWARD);
+            hasPixelServo = true;
+        }
+
+        if (canGetDevice("grabberServo")){
+            grabberServo = setupServo("grabberServo",.5);
+            hasGrabberServo = true;
+        }
+
+        if (canGetDevice("linearActuatorMotor")){
+            linearActuatorMotor = setupMotor("linearActuatorMotor", DcMotor.Direction.FORWARD, 0, false,true);
+            hasLinearActuatorMotor = true;
+        }
+
+        if (canGetDevice("limitSwitchIn"))
+            limitSwitchIn = hardwareMap.get(TouchSensor.class, "limitSwitchIn");
+        if (canGetDevice("limitSwitchOut"))
+            limitSwitchOut = hardwareMap.get(TouchSensor.class, "limitSwitchOut");
 
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
         parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
@@ -62,6 +92,15 @@ public class HardwareMapping {
         imu.initialize(parameters);
     }
 
+    private boolean canGetDevice(String deviceName){
+        try{
+            hardwareMap.get(deviceName);
+            return true;
+        }
+        catch (Exception ex){
+            return false;
+        }
+    }
     public boolean reverseMotorDirection() {
         isReverse = !isReverse;
         if (isReverse) {
@@ -112,8 +151,7 @@ public class HardwareMapping {
             servo.setPower(initialPower);
             return servo;
         } catch (Exception e) {
-            throw e;
-//          return null;
+            return null;
         }
     }
 

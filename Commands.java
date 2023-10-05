@@ -12,7 +12,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class Commands extends HardwareMapping {
@@ -27,7 +26,9 @@ public class Commands extends HardwareMapping {
         Right,
         Left
     }
-
+    public void servoSetPos(double position) {
+        grabberServo.setPosition(position);
+    }
     public String getColor(float hue, float saturation, float value) {
         if (hue > 210 && hue < 225) {
             return "Blue";
