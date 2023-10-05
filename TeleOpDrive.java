@@ -6,6 +6,7 @@ import android.util.Size;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -49,7 +50,7 @@ public class TeleOpDrive extends LinearOpMode {
         double forwardPower;
         double rotatePower;
         double offsetHeading = 0;
-
+        boolean isreverse = false;
         boolean isGrabberOpen = true;
         double liftPower = 0;
 
@@ -99,26 +100,35 @@ public class TeleOpDrive extends LinearOpMode {
                     sleep(5000);
                 }
                 // Field centric toggle
-                if (gamepad1.b && gamepad1.right_bumper) {
-                    fieldCentric = !fieldCentric;
-                    // Pause to let the user release the button
-                    sleep(250);
-                }
+                //if (gamepad1.b && gamepad1.right_bumper) {
+                //fieldCentric = !fieldCentric;
+                // Pause to let the user release the button
+                //sleep(250);
+                //}
 
                 // Turbo driving
                 if (gamepad1.left_bumper) {
                     drivePower = TURBO_DRIVE_SPEED;  // change drive speed to the turbo speed variable
                 }
 
+                if (gamepad1.a) {
+                    commands.deliverPixel();
+                }
+                if (gamepad1.dpad_up) {
+                    isreverse = robot.reverseMotorDirection();
+                }
+
                 // mecanum driving
                 strafePower = gamepad1.left_stick_x;
                 forwardPower = -gamepad1.left_stick_y;
                 rotatePower = gamepad1.right_stick_x;
-
-                offsetHeading = 0;
-                if (fieldCentric) {
-                    offsetHeading = getAngle();
+                if (isreverse) {
+                    rotatePower *= -1;
                 }
+                offsetHeading = 0;
+                //if (fieldCentric) {
+                //    offsetHeading = getAngle();
+                //}
 
                 driveFieldCentric(strafePower, forwardPower, rotatePower, drivePower, offsetHeading);
             }
@@ -187,18 +197,18 @@ public class TeleOpDrive extends LinearOpMode {
             List<AprilTagDetection> myAprilTagDetections;  // list of all detections
             AprilTagDetection tag = null;
             myAprilTagDetections = tagProcessor.getDetections();
-           for (AprilTagDetection myAprilTagDetection : myAprilTagDetections) {
-               if (myAprilTagDetection.metadata != null) {  // This check for non-null Metadata is not needed for reading only ID code.
-                   if (myAprilTagDetection.id == targetId){
-                       tag = myAprilTagDetection;
-                       break;
-                   }
-               }
+            for (AprilTagDetection myAprilTagDetection : myAprilTagDetections) {
+                if (myAprilTagDetection.metadata != null) {  // This check for non-null Metadata is not needed for reading only ID code.
+                    if (myAprilTagDetection.id == targetId) {
+                        tag = myAprilTagDetection;
+                        break;
+                    }
+                }
             }
 
             //tagProcessor.getDetections().indexOf(new AprilTagDetection(5));
 
-            if (tag == null){
+            if (tag == null) {
                 return;
             }
             telemetry.addData("ID", tag.id);
@@ -220,7 +230,7 @@ public class TeleOpDrive extends LinearOpMode {
             boolean currentside = true; // true is right size, false is left side
             if (direction == FollowDirection.Straight) {
                 if (distance > targetDistance) {
-                    commands.driveForward(straightspeed, (abs(distance) - targetDistance)/2, 3, telemetry);
+                    commands.driveForward(straightspeed, (abs(distance) - targetDistance) / 2, 3, telemetry);
                 }
             }
 //            if (direction == FollowDirection.Rotate) {
@@ -235,20 +245,20 @@ public class TeleOpDrive extends LinearOpMode {
                     if (angle > 15) {
                         commands.strafeRight(speed, 4, 3);
                     }
-                    commands.spinLeft(speed, getAngle() + angle/3, 1);
+                    commands.spinLeft(speed, getAngle() + angle / 3, 1);
                 } else if (angle < -2) {
                     if (angle < -15) {
                         commands.strafeLeft(speed, 4, 3);
                     }
-                    commands.spinRight(speed, getAngle() + angle/3, 1);
+                    commands.spinRight(speed, getAngle() + angle / 3, 1);
                 }
             }
 
             if (direction == FollowDirection.Strafe) {
                 if (x > 3) {
-                    commands.strafeRight(speed, (abs(x) - cameraOffset)/3, 3);
+                    commands.strafeRight(speed, (abs(x) - cameraOffset) / 3, 3);
                 } else if (x < -3) {
-                    commands.strafeLeft(speed, (abs(x) - cameraOffset)/3, 3);
+                    commands.strafeLeft(speed, (abs(x) - cameraOffset) / 3, 3);
                 }
             }
         }

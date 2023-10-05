@@ -12,6 +12,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
 public class HardwareMapping {
+
+    private boolean isReverse = false;
     public DcMotor leftFrontMotor = null;
     public DcMotor leftBackMotor = null;
     public DcMotor rightFrontMotor = null;
@@ -23,6 +25,8 @@ public class HardwareMapping {
 
 //    public DcMotor liftMotorLeft = null;
 //    public DcMotor liftMotorRight = null;
+
+    public CRServo pixelServo = null;
 
     public BNO055IMU imu = null;
 
@@ -36,10 +40,13 @@ public class HardwareMapping {
 
         // Define and Initialize Motors
         webCam1 = setupWebcam("Webcam 1");
-        leftFrontMotor = setupMotor("leftFrontMotor", DcMotor.Direction.REVERSE, 0, true,true);
-        leftBackMotor = setupMotor("leftBackMotor", DcMotor.Direction.REVERSE, 0, true,true);
-        rightFrontMotor = setupMotor("rightFrontMotor", DcMotor.Direction.FORWARD, 0, true,true);
-        rightBackMotor = setupMotor("rightBackMotor", DcMotor.Direction.FORWARD, 0, true,true);
+        leftFrontMotor = setupMotor("leftFrontMotor", DcMotor.Direction.REVERSE, 0, true, true);
+        leftBackMotor = setupMotor("leftBackMotor", DcMotor.Direction.REVERSE, 0, true, true);
+        rightFrontMotor = setupMotor("rightFrontMotor", DcMotor.Direction.FORWARD, 0, true, true);
+        rightBackMotor = setupMotor("rightBackMotor", DcMotor.Direction.FORWARD, 0, true, true);
+
+        pixelServo = setupCRServo("pixelServo", 0.00);
+        pixelServo.setDirection(DcMotorSimple.Direction.FORWARD);
 
         //TODO setup lift and grabber motors
 //        grabberServo = setupServo("grabberServo", 0.05);
@@ -53,6 +60,22 @@ public class HardwareMapping {
 
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         imu.initialize(parameters);
+    }
+
+    public boolean reverseMotorDirection() {
+        isReverse = !isReverse;
+        if (isReverse) {
+            leftFrontMotor.setDirection(DcMotor.Direction.FORWARD);
+            leftBackMotor.setDirection(DcMotor.Direction.FORWARD);
+            rightFrontMotor.setDirection(DcMotor.Direction.REVERSE);
+            rightBackMotor.setDirection(DcMotor.Direction.REVERSE);
+        } else {
+            leftFrontMotor.setDirection(DcMotor.Direction.REVERSE);
+            leftBackMotor.setDirection(DcMotor.Direction.REVERSE);
+            rightFrontMotor.setDirection(DcMotor.Direction.FORWARD);
+            rightBackMotor.setDirection(DcMotor.Direction.FORWARD);
+        }
+        return isReverse;
     }
 
     /* Init Motor, set direction, initial power and encoder runmode (if applicable)
@@ -89,7 +112,8 @@ public class HardwareMapping {
             servo.setPower(initialPower);
             return servo;
         } catch (Exception e) {
-            return null;
+            throw e;
+//          return null;
         }
     }
 

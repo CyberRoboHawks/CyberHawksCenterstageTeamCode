@@ -12,6 +12,9 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
 public class Commands extends HardwareMapping {
     //https://www.gobilda.com/5203-series-yellow-jacket-planetary-gear-motor-19-2-1-ratio-24mm-length-8mm-rex-shaft-312-rpm-3-3-5v-encoder/
     static final double COUNTS_PER_MOTOR_REV = 537.7;//384.5;    // eg: TETRIX Motor Encoder (1440 - 60:1; 960 - 40:1, 480 - 20:1)
@@ -25,23 +28,11 @@ public class Commands extends HardwareMapping {
         Left
     }
 
-    public String getColor(int red, int green, int blue){
-        if(red > 3000 && green > 3000 && blue > 3000){
-            return "It's probably white";
+    public String getColor(float hue, float saturation, float value) {
+        if (hue > 210 && hue < 225) {
+            return "Blue";
         }
-
-        if(red > 3000){
-            return "It's probably red";
-        }
-
-        if(green > 3000){
-            return "It's probably green";
-        }
-
-        if(blue > 3000){
-            return "It's probably blue";
-        }
-        return "I don't know";
+        return "";
     }
 
     // Drive forward
@@ -50,8 +41,8 @@ public class Commands extends HardwareMapping {
     }
 
     // Drive backward
-    public void driveBackwards(double power, double distanceInInches, double timeout) {
-        //encoderDriveStraight(power, -distanceInInches, timeout);
+    public void driveBackwards(double power, double distanceInInches, double timeout, Telemetry telemetry) {
+        encoderDriveStraight(power, -distanceInInches, timeout, telemetry);
     }
 
     public void setMotorRunMode(DcMotor.RunMode mode) {
@@ -162,6 +153,27 @@ public class Commands extends HardwareMapping {
         return imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
     }
 
+    public void driveStraightWhile(double power, Supplier<Boolean> keepGoing, double timeout) throws InterruptedException {
+        if (!keepGoing.get()) {
+            return;
+        }
+        runtime.reset();
+        setMotorRunMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        leftBackMotor.setPower(abs(power));
+        leftFrontMotor.setPower(abs(power));
+        rightBackMotor.setPower(abs(power));
+        rightFrontMotor.setPower(abs(power));
+
+        while (keepGoing.get() && runtime.seconds() < timeout) {
+            sleep(100);
+        }
+
+        // Stop all motion;
+        stopDrivingMotors();
+        setMotorRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    }
+
     private void encoderRunToPosition(double power, int leftFrontTarget, int leftBackTarget, int rightFrontTarget, int rightBackTarget, double timeoutS) {
         leftFrontMotor.setTargetPosition(leftFrontTarget);
         leftBackMotor.setTargetPosition(leftBackTarget);
@@ -219,7 +231,12 @@ public class Commands extends HardwareMapping {
         encoderRunToPosition(power, leftFrontTarget, leftBackTarget, rightFrontTarget, rightBackTarget, timeoutS);
     }
 
-
+    public void deliverPixel()throws InterruptedException
+    {
+        pixelServo.setPower(.2);
+        sleep(1265);
+        pixelServo.setPower(0);
+    }
 
     private void stopDrivingMotors() {
         leftBackMotor.setPower(0);
