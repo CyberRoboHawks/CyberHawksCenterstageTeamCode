@@ -6,7 +6,7 @@ import android.util.Size;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -25,12 +25,20 @@ import java.util.List;
 public class TeleOpDrive extends LinearOpMode {
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
     Commands commands = new Commands();
+
+    AprilTagProcessor tagProcessor = null;
     static final double STANDARD_DRIVE_SPEED = .3;
     static final double TURBO_DRIVE_SPEED = .6;
     static final double STRAFE_SPEED = .4;
     /*static final double LIFT_MAX_UP_POWER = .5;
     static final double LIFT_MAX_DOWN_POWER = .15;
     static final double LIFT_HOLD_POWER = .2;*/
+
+    public enum ArmDirection {
+        Down,
+        None,
+        Up
+    }
 
     public enum FollowDirection {
         Rotate,
@@ -40,31 +48,34 @@ public class TeleOpDrive extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
-
         // Initialize the hardware variables.
         robot.init(hardwareMap);
         commands.init(hardwareMap);
 
-        boolean fieldCentric = false;
+        double armPower;
         double strafePower;
         double forwardPower;
         double rotatePower;
         double offsetHeading = 0;
         boolean isreverse = false;
+        boolean isServoOpen = true;
         boolean isGrabberOpen = true;
         double liftPower = 0;
 
-        AprilTagProcessor tagProcessor = new AprilTagProcessor.Builder()
-                .setDrawCubeProjection(true)
-                .setDrawTagID(true)
-                //.setLensIntrinsics(1452.13,1452.13,653.281,181.125)
-                .build();
-        VisionPortal visionPortal = new VisionPortal.Builder()
-                .addProcessor(tagProcessor)
-                .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
-                //.setCameraResolution(new Size(1280, 720))
-                .setCameraResolution(new Size(1920, 1080))
-                .build();
+        if (robot.hasCamera) {
+            tagProcessor = new AprilTagProcessor.Builder()
+                    .setDrawCubeProjection(true)
+                    .setDrawTagID(true)
+                    //.setLensIntrinsics(1452.13,1452.13,653.281,181.125)
+                    .build();
+            VisionPortal visionPortal = new VisionPortal.Builder()
+                    .addProcessor(tagProcessor)
+                    .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+                    //.setCameraResolution(new Size(1280, 720))
+                    .setCameraResolution(new Size(1920, 1080))
+                    .build();
+        }
+
         waitForStart();
 
         telemetry.addData("Status:", "Ready");
@@ -78,7 +89,7 @@ public class TeleOpDrive extends LinearOpMode {
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
 
-            if (!isStopRequested()) {
+            if (!isStopRequested() && robot.hasCamera) {
                 int targetId = 4;
                 followTag(tagProcessor, FollowDirection.Straight, targetId);
                 followTag(tagProcessor, FollowDirection.Strafe, targetId);
@@ -87,24 +98,31 @@ public class TeleOpDrive extends LinearOpMode {
 
             double drivePower = STANDARD_DRIVE_SPEED;  //1 is 100%, .5 is 50%
 
-/*            if (fieldCentric) {
-                telemetry.addData("Driving Mode:", "Field Centric");
-            } else {
-                telemetry.addData("Driving Mode:", "Robot Centric");
-            }*/
-
             //Driver controller ---------------------
             if (gamepad1 != null) {
+                if (gamepad1.left_bumper && gamepad1.right_bumper) {
+                    telemetry.addData("hehe", true);
+                    telemetry.update();
+                }
+
+                if (gamepad1.left_trigger > 0 && gamepad1.right_trigger > 0) {
+                    telemetry.addData("triggers pressed", true);
+                    telemetry.update();
+                }
+
+                if (gamepad1.a) {
+                    if (isServoOpen) {
+                        commands.servoSetPos(0.6);
+                    } else {
+                        commands.servoSetPos(0.8);
+                    }
+                    isServoOpen = !isServoOpen;
+                    sleep(250);
+                }
                 if (gamepad1.y) {
                     commands.driveForward(.4, 12, 4, telemetry);
                     sleep(5000);
                 }
-                // Field centric toggle
-                //if (gamepad1.b && gamepad1.right_bumper) {
-                //fieldCentric = !fieldCentric;
-                // Pause to let the user release the button
-                //sleep(250);
-                //}
 
                 // Turbo driving
                 if (gamepad1.left_bumper) {
@@ -126,69 +144,45 @@ public class TeleOpDrive extends LinearOpMode {
                     rotatePower *= -1;
                 }
                 offsetHeading = 0;
-                //if (fieldCentric) {
-                //    offsetHeading = getAngle();
-                //}
 
                 driveFieldCentric(strafePower, forwardPower, rotatePower, drivePower, offsetHeading);
             }
 
             //Co-Driver controller ---------------------
-//            if (gamepad2 != null) {
-//                if (gamepad2.b) {
-//                    if (isGrabberOpen) {
-//                        commands.grabberClose();
-//                    } else {
-//                        commands.grabberOpen();
-//                    }
-//                    isGrabberOpen = !isGrabberOpen;
-//                    sleep(300);
-//                }
-//
-//                if (gamepad2.left_bumper){
-//                    // Hold the lift in place
-//                    commands.liftMoveUp(LIFT_HOLD_POWER);
-//                }
-//
-//                if (gamepad2.a){
-//                    // move the lift off of field level
-//                    commands.liftMoveToPosition(PowerPlayEnums.liftPosition.Drive, 3);
-//                    // hold the lift at the drive position
-//                    commands.liftMoveUp(LIFT_HOLD_POWER);
-//                }
-//
-//                liftPower = -gamepad2.left_stick_y;
-//                if (abs(liftPower) != 0) {
-//                    if (liftPower > 0) {
-//                        if (robot.liftMaxSensor.isPressed()){
-//                            // hold the lift at the top with minimal power
-//                            liftPower = LIFT_HOLD_POWER;
-//                        }
-//                        else {
-//                            liftPower = liftPower * LIFT_MAX_UP_POWER;
-//                        }
-//
-//                        commands.liftMoveUp(liftPower);
-//                        //telemetry.addData("lift move up at:", liftPower);
-//                    } else {
-//                        if (robot.liftMinSensor.isPressed()){
-//                            // at the bottom no power needed
-//                            liftPower = 0;
-//                        }
-//                        else {
-//                            liftPower = liftPower * LIFT_MAX_DOWN_POWER;
-//                        }
-//
-//                        commands.liftMoveDown(liftPower);
-//                        //telemetry.addData("lift move down at:", liftPower );
-//                    }
-//                } else {
-//                    commands.liftStop();
-//                }
-//            }
-            //telemetry.addData("robot angle:", getAngle());
-            //telemetry.update();
+            if (gamepad2 != null) {
+                armPower = -gamepad2.right_stick_y;
+                if (armPower > 0) {
+                    setArmPower(armPower, ArmDirection.Up);
+                } else if (armPower < 0) {
+                    setArmPower(armPower, ArmDirection.Down);
+                } else {
+                    setArmPower(0, ArmDirection.None);
+                }
+                telemetry.addData("arm power:", armPower);
+                telemetry.addData("arm position:", robot.armMotorRight.getCurrentPosition());
+                telemetry.update();
+            }
         }
+    }
+
+    private void setArmPower(double power, ArmDirection armDirection) {
+        if (!robot.hasArmMotors)
+            return;
+        double ease = .6;
+        double position = robot.armMotorRight.getCurrentPosition();
+        if (armDirection == ArmDirection.Up && position > 150) {
+            ease = .3;
+        }
+        if (armDirection == ArmDirection.Down && position < 150) {
+            ease = .3;
+        }
+        if (armDirection == ArmDirection.Down && position < 80) {
+            power = .1;  // put the brakes on
+        }
+
+        power = power * ease;
+        robot.armMotorRight.setPower(power);
+        robot.armMotorLeft.setPower(power);
     }
 
     private void followTag(AprilTagProcessor tagProcessor, FollowDirection direction, int targetId) {
@@ -265,6 +259,9 @@ public class TeleOpDrive extends LinearOpMode {
     }
 
     private void driveFieldCentric(double strafeSpeed, double forwardSpeed, double rotate, double drivePower, double heading) {
+        if (!robot.hasDriveMotors)
+            return;
+
         //finds just how much power to give the robot based on how much x and y given by gamepad
         //range.clip helps us keep our power within positive 1
         // also helps set maximum possible value of 1/sqrt(2) for x and y controls if at a 45 degree angle (which yields greatest possible value for y+x)
