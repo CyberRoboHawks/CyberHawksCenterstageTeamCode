@@ -33,7 +33,6 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.view.View;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.ColorSensor;
@@ -72,8 +71,8 @@ public class SensorMRColor extends LinearOpMode {
     Commands commands = new Commands();
 
     // Initialize the hardware variables.
-    robot.init(hardwareMap);
-    commands.init(hardwareMap);
+    //robot.init(hardwareMap);
+    //commands.init(hardwareMap);
 
     // get a reference to the RelativeLayout so we can change the background
     // color of the Robot Controller app to match the hue detected by the RGB sensor.
@@ -95,32 +94,32 @@ public class SensorMRColor extends LinearOpMode {
 
     // wait for the start button to be pressed.
     waitForStart();
-    commands.reverseMotorDirection();
+    //commands.reverseMotorDirection();
     // while the OpMode is active, loop and read the RGB data.
     // Note we use opModeIsActive() as our loop condition because it is an interruptible method.
     while (opModeIsActive()) {
 
-      if (gamepad1 != null) {
-        if (gamepad1.x) {
-          commands.driveStraightWhile(.2, () -> {
-            Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
-            return commands.getColor(hsvValues[0], hsvValues[1], hsvValues[2]) != "Blue";
-          },5);
-
-          commands.driveBackwards(.3,2,2,telemetry);
-          commands.deliverPixel();
-        }
-      }
-      // check the status of the x button on either gamepad.
-      bCurrState = gamepad1.x;
-
-      // check for button state transitions.
-      if (bCurrState && (bCurrState != bPrevState)) {
-
-        // button is transitioning to a pressed state. So Toggle LED
-        bLedOn = !bLedOn;
-        colorSensor.enableLed(bLedOn);
-      }
+//      if (gamepad1 != null) {
+//        if (gamepad1.x) {
+//          commands.driveStraightWhile(.2, () -> {
+//            Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+//            return commands.getColor(hsvValues[0], hsvValues[1], hsvValues[2]) != "Blue";
+//          },5);
+//
+//          commands.driveBackwards(.3,2,2,telemetry);
+//          commands.deliverPixel();
+//        }
+//      }
+//      // check the status of the x button on either gamepad.
+//      bCurrState = gamepad1.x;
+//
+//      // check for button state transitions.
+//      if (bCurrState && (bCurrState != bPrevState)) {
+//
+//        // button is transitioning to a pressed state. So Toggle LED
+//        bLedOn = !bLedOn;
+//        colorSensor.enableLed(bLedOn);
+//      }
 
       // update previous state variable.
       bPrevState = bCurrState;
@@ -137,7 +136,7 @@ public class SensorMRColor extends LinearOpMode {
       telemetry.addData("Hue", hsvValues[0]);
       telemetry.addData("Saturation", hsvValues[1]);
       telemetry.addData("Value", hsvValues[2]);
-      telemetry.addData("GetColor", commands.getColor(hsvValues[0], hsvValues[1], hsvValues[2]));
+      telemetry.addData("GetColor", commands.getTapeColor(hsvValues[0], hsvValues[1], hsvValues[2]));
 
 
 

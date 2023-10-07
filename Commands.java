@@ -29,11 +29,19 @@ public class Commands extends HardwareMapping {
     public void servoSetPos(double position) {
         grabberServo.setPosition(position);
     }
-    public String getColor(float hue, float saturation, float value) {
-        if (hue > 210 && hue < 225) {
-            return "Blue";
+    public enum tapeColor {
+        Blue,
+        Red,
+        Nothing
+    }
+    public tapeColor getTapeColor(float hue, float saturation, float value) {
+        if (hue > 205 && hue < 230) {
+            return tapeColor.Blue;
         }
-        return "";
+        if (hue > 21 && hue < 38) {
+            return tapeColor.Red;
+        }
+        return tapeColor.Nothing;
     }
 
     // Drive forward
