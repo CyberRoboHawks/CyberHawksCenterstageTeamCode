@@ -20,6 +20,10 @@ public class CenterStageEnums {
         Up
     }
 
+    public enum StrafeDirection {
+        Right,
+        Left
+    }
     public enum TapeColor {
         Blue,
         Red,

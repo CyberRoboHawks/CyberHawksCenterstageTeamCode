@@ -65,15 +65,15 @@ public class Commands extends HardwareMapping {
 
     // Strafe left
     public void strafeLeft(double power, double distanceInInches, double timeout) {
-        encoderDriveStrafe(power, distanceInInches, strafeDirection.Left, timeout);
+        encoderDriveStrafe(power, distanceInInches, CenterStageEnums.StrafeDirection.Left, timeout);
     }
 
     // Strafe right
     public void strafeRight(double power, double distanceInInches, double timeout) {
-        encoderDriveStrafe(power, distanceInInches, strafeDirection.Right, timeout);
+        encoderDriveStrafe(power, distanceInInches, CenterStageEnums.StrafeDirection.Right, timeout);
     }
 
-    private void encoderDriveStrafe(double power, double distanceInches, strafeDirection direction, double timeoutS) {
+    private void encoderDriveStrafe(double power, double distanceInches, CenterStageEnums.StrafeDirection direction, double timeoutS) {
         int leftBackTarget = 0;
         int leftFrontTarget = 0;
         int rightBackTarget = 0;
@@ -84,7 +84,7 @@ public class Commands extends HardwareMapping {
         int newMotorPosition = (int) (distanceInches * COUNTS_PER_INCH);
 
         // Determine new target position, and pass to motor controller
-        if (direction == strafeDirection.Left) {
+        if (direction == CenterStageEnums.StrafeDirection.Left) {
             //Left strafe
             leftBackTarget = leftBackMotor.getCurrentPosition() + newMotorPosition;
             leftFrontTarget = leftFrontMotor.getCurrentPosition() - newMotorPosition;
@@ -253,10 +253,5 @@ public class Commands extends HardwareMapping {
         leftFrontMotor.setPower(0);
         rightBackMotor.setPower(0);
         rightFrontMotor.setPower(0);
-    }
-
-    public enum strafeDirection {
-        Right,
-        Left
     }
 }
