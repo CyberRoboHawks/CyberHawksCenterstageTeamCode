@@ -6,7 +6,7 @@ import android.util.Size;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -23,27 +23,25 @@ import java.util.List;
 @TeleOp(name = "TeleOpDrive", group = "TeleOp") // add this code
 //@Disabled
 public class TeleOpDrive extends LinearOpMode {
-    HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
-    Commands commands = new Commands();
-
-    AprilTagProcessor tagProcessor = null;
     static final double STANDARD_DRIVE_SPEED = .3;
     static final double TURBO_DRIVE_SPEED = .6;
     static final double STRAFE_SPEED = .4;
+    HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
+    Commands commands = new Commands();
+    AprilTagProcessor tagProcessor = null;
     /*static final double LIFT_MAX_UP_POWER = .5;
     static final double LIFT_MAX_DOWN_POWER = .15;
     static final double LIFT_HOLD_POWER = .2;*/
 
-    public enum ArmDirection {
-        Down,
-        None,
-        Up
-    }
-
-    public enum FollowDirection {
-        Rotate,
-        Strafe,
-        Straight
+    public void printRobotStatus() {
+        telemetry.addData("hasArmMotors: ", robot.hasArmMotors);
+        telemetry.addData("hasCamera: ", robot.hasCamera);
+        telemetry.addData("hasDriveMotors: ", robot.hasDriveMotors);
+        telemetry.addData("hasDroneServo: ", robot.hasDroneServo);
+        telemetry.addData("hasGrabberServo: ", robot.hasGrabberServo);
+        telemetry.addData("hasLinearActuatorMotor: ", robot.hasLinearActuatorMotor);
+        telemetry.addData("hasPixelServo: ", robot.hasPixelServo);
+        telemetry.addData("hasWristServo: ", robot.hasWristServo);
     }
 
     @Override
@@ -57,9 +55,9 @@ public class TeleOpDrive extends LinearOpMode {
         double forwardPower;
         double rotatePower;
         double offsetHeading = 0;
-        boolean isreverse = false;
-        boolean isServoOpen = true;
-        boolean isGrabberOpen = true;
+        boolean isReverse = false;
+        boolean isGrabberOpen = false;
+        CenterStageEnums.Position grabberPosition = CenterStageEnums.Position.Up;
         double liftPower = 0;
 
         if (robot.hasCamera) {
@@ -71,13 +69,12 @@ public class TeleOpDrive extends LinearOpMode {
             VisionPortal visionPortal = new VisionPortal.Builder()
                     .addProcessor(tagProcessor)
                     .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+
                     //.setCameraResolution(new Size(1280, 720))
                     .setCameraResolution(new Size(1920, 1080))
                     .build();
         }
-
-        waitForStart();
-
+        printRobotStatus();
         telemetry.addData("Status:", "Ready");
         //telemetry.addData("Driving Mode:", "Robot Centric");
         telemetry.update();
@@ -89,11 +86,11 @@ public class TeleOpDrive extends LinearOpMode {
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
 
-            if (!isStopRequested() && robot.hasCamera) {
-                int targetId = 4;
-                followTag(tagProcessor, FollowDirection.Straight, targetId);
-                followTag(tagProcessor, FollowDirection.Strafe, targetId);
-                followTag(tagProcessor, FollowDirection.Rotate, targetId);
+            if (!isStopRequested() && robot.hasCamera && !gamepad1.a) {
+                int targetId = 5;
+                followTag(tagProcessor, CenterStageEnums.FollowDirection.Rotate, targetId);
+                followTag(tagProcessor, CenterStageEnums.FollowDirection.Strafe, targetId);
+                followTag(tagProcessor, CenterStageEnums.FollowDirection.Straight, targetId);
             }
 
             double drivePower = STANDARD_DRIVE_SPEED;  //1 is 100%, .5 is 50%
@@ -101,8 +98,8 @@ public class TeleOpDrive extends LinearOpMode {
             //Driver controller ---------------------
             if (gamepad1 != null) {
                 if (gamepad1.left_bumper && gamepad1.right_bumper) {
-                    telemetry.addData("hehe", true);
-                    telemetry.update();
+                    isReverse = commands.reverseMotorDirection();
+                    sleep(200);
                 }
 
                 if (gamepad1.left_trigger > 0 && gamepad1.right_trigger > 0) {
@@ -110,82 +107,115 @@ public class TeleOpDrive extends LinearOpMode {
                     telemetry.update();
                 }
 
-                if (gamepad1.a) {
-                    if (isServoOpen) {
-                        commands.servoSetPos(0.6);
-                    } else {
-                        commands.servoSetPos(0.8);
-                    }
-                    isServoOpen = !isServoOpen;
-                    sleep(250);
-                }
-                if (gamepad1.y) {
-                    commands.driveForward(.4, 12, 4, telemetry);
-                    sleep(5000);
-                }
-
                 // Turbo driving
                 if (gamepad1.left_bumper) {
                     drivePower = TURBO_DRIVE_SPEED;  // change drive speed to the turbo speed variable
                 }
 
-                if (gamepad1.a) {
+                if (gamepad1.a && robot.hasPixelServo) {
                     commands.deliverPixel();
-                }
-                if (gamepad1.dpad_up) {
-                    isreverse = robot.reverseMotorDirection();
                 }
 
                 // mecanum driving
                 strafePower = gamepad1.left_stick_x;
                 forwardPower = -gamepad1.left_stick_y;
                 rotatePower = gamepad1.right_stick_x;
-                if (isreverse) {
+                if (isReverse) {
                     rotatePower *= -1;
                 }
                 offsetHeading = 0;
-
+//                telemetry.addData("left_stick_x", gamepad1.left_stick_x);
+//                telemetry.addData("left_stick_y", gamepad1.left_stick_y);
+//                telemetry.addData("isReverse",isReverse);
+//                telemetry.update();
                 driveFieldCentric(strafePower, forwardPower, rotatePower, drivePower, offsetHeading);
             }
 
             //Co-Driver controller ---------------------
             if (gamepad2 != null) {
-                armPower = -gamepad2.right_stick_y;
-                if (armPower > 0) {
-                    setArmPower(armPower, ArmDirection.Up);
-                } else if (armPower < 0) {
-                    setArmPower(armPower, ArmDirection.Down);
-                } else {
-                    setArmPower(0, ArmDirection.None);
+                if (gamepad2.a && robot.hasGrabberServo) {
+                    if (isGrabberOpen) {
+                        commands.servoSetPos(0.4);
+                    } else {
+                        commands.servoSetPos(0.6);
+                    }
+                    isGrabberOpen = !isGrabberOpen;
+                    sleep(250);
                 }
-                telemetry.addData("arm power:", armPower);
-                telemetry.addData("arm position:", robot.armMotorRight.getCurrentPosition());
-                telemetry.update();
+
+                if (gamepad1.y && robot.hasDroneServo) {
+                    robot.droneServo.setPosition(1);
+                    sleep(500);
+                    robot.droneServo.setPosition(0);
+                }
+
+                if (robot.hasWristServo) {
+                    if (gamepad2.dpad_down && grabberPosition == CenterStageEnums.Position.Up) {
+                        robot.wristServo.setDirection(DcMotorSimple.Direction.FORWARD);
+                        robot.wristServo.setPower(.3);
+                        sleep(400);
+                        robot.wristServo.setPower(0);
+                        grabberPosition = CenterStageEnums.Position.Down;
+                    }
+                    if (gamepad2.dpad_up && grabberPosition == CenterStageEnums.Position.Down) {
+                        robot.wristServo.setDirection(DcMotorSimple.Direction.REVERSE);
+                        robot.wristServo.setPower(1);
+                        if (isGrabberOpen) {
+                            sleep(800);
+                        } else {
+                            sleep(1200);
+                        }
+                        robot.wristServo.setPower(0);
+                        grabberPosition = CenterStageEnums.Position.Up;
+                    }
+                }
+
+
+                armPower = -gamepad2.right_stick_y;
+                if (robot.hasArmMotors) {
+                    if (armPower > 0) {
+                        setArmPower(armPower, CenterStageEnums.ArmDirection.Up);
+                    } else if (armPower < 0) {
+                        setArmPower(armPower, CenterStageEnums.ArmDirection.Down);
+                    } else {
+                        setArmPower(0, CenterStageEnums.ArmDirection.None);
+                    }
+                    // telemetry.addData("arm power:", armPower);
+                    // telemetry.addData("arm position:", robot.armMotorRight.getCurrentPosition());
+                }
+                //telemetry.update();
             }
         }
     }
 
-    private void setArmPower(double power, ArmDirection armDirection) {
+    private void setArmPower(double power, CenterStageEnums.ArmDirection armDirection) {
         if (!robot.hasArmMotors)
             return;
-        double ease = .6;
+        // double ease = .4;
         double position = robot.armMotorRight.getCurrentPosition();
-        if (armDirection == ArmDirection.Up && position > 150) {
-            ease = .3;
-        }
-        if (armDirection == ArmDirection.Down && position < 150) {
-            ease = .3;
-        }
-        if (armDirection == ArmDirection.Down && position < 80) {
-            power = .1;  // put the brakes on
-        }
+        telemetry.addData("arm power:", power);
+        telemetry.addData("arm direction:", armDirection);
+        telemetry.addData("arm position:", robot.armMotorRight.getCurrentPosition());
 
-        power = power * ease;
+//        if (armDirection == ArmDirection.Up && position > 150) {
+//            ease = .3;
+//        }
+//        if (armDirection == ArmDirection.Down && position < 150) {
+//            ease = .3;
+//        }
+//        if (armDirection == ArmDirection.Down && position < 80) {
+//            ease = 1;
+//            power = .1;  // put the brakes on
+//        }
+
+        // power = power * ease;
+        telemetry.addData("arm power eased:", power);
+        telemetry.update();
         robot.armMotorRight.setPower(power);
         robot.armMotorLeft.setPower(power);
     }
 
-    private void followTag(AprilTagProcessor tagProcessor, FollowDirection direction, int targetId) {
+    private void followTag(AprilTagProcessor tagProcessor, CenterStageEnums.FollowDirection direction, int targetId) {
         if (tagProcessor.getDetections().size() > 0) {
             AprilTagProcessor myAprilTagProcessor;
             List<AprilTagDetection> myAprilTagDetections;  // list of all detections
@@ -200,61 +230,64 @@ public class TeleOpDrive extends LinearOpMode {
                 }
             }
 
-            //tagProcessor.getDetections().indexOf(new AprilTagDetection(5));
-
             if (tag == null) {
                 return;
             }
             telemetry.addData("ID", tag.id);
-            telemetry.addData("angle x", tag.ftcPose.x);
-            telemetry.addData("distance", tag.ftcPose.y);
-            telemetry.addData("Z", tag.ftcPose.z);
-//            telemetry.addData("Roll", tag.ftcPose.roll);
-            telemetry.addData("angle Yaw", tag.ftcPose.yaw);
-//            telemetry.addData("Pitch", tag.ftcPose.pitch);
-//            telemetry.addData("Confidence:", tag.decisionMargin);
+            telemetry.addData("strafe yaw", tag.ftcPose.yaw);
+            telemetry.addData("distance range", tag.ftcPose.range);
+            telemetry.addData("rotate angle", tag.ftcPose.bearing);
             telemetry.update();
             double speed = .3;
             double straightspeed = .3;
             double targetDistance = 12;
-            double angle = tag.ftcPose.yaw;
-            double x = tag.ftcPose.x;
-            double distance = tag.ftcPose.y;
+            double heading = tag.ftcPose.bearing;
+            double yaw = tag.ftcPose.yaw;//tag.ftcPose.x;
+            double distance = tag.ftcPose.range;//tag.ftcPose.y;
             double cameraOffset = 0;
-            boolean currentside = true; // true is right size, false is left side
-            if (direction == FollowDirection.Straight) {
-                if (distance > targetDistance) {
-                    commands.driveForward(straightspeed, (abs(distance) - targetDistance) / 2, 3, telemetry);
-                }
+            //boolean currentside = true; // true is right size, false is left side
+
+            double angleGain = .3;
+            double strafeGain = .2;
+            double straightGain = .4;
+            if (distance > 30) {
+                angleGain = .4;
+                strafeGain = .3;
+                straightGain = .6;
             }
-//            if (direction == FollowDirection.Rotate) {
-//                if (tag.ftcPose.x > 5){
-//                    commands.spinRight(speed, (getAngle() + abs(x))/2, 3);
-//                } else if (tag.ftcPose.x < -5) {
-//                    commands.spinLeft(speed, (getAngle() + abs(x))/2, 3);
-//                }
-//            }
-            if (direction == FollowDirection.Rotate) {
-                if (angle > 2) {
-                    if (angle > 15) {
-                        commands.strafeRight(speed, 4, 3);
-                    }
-                    commands.spinLeft(speed, getAngle() + angle / 3, 1);
-                } else if (angle < -2) {
-                    if (angle < -15) {
-                        commands.strafeLeft(speed, 4, 3);
-                    }
-                    commands.spinRight(speed, getAngle() + angle / 3, 1);
+
+            if (direction == CenterStageEnums.FollowDirection.Straight) {
+                if (distance > targetDistance) {
+                    commands.driveForward(straightspeed, (abs(distance) - targetDistance) * straightGain, 3, telemetry);
+                }
+                if (heading > 20) {
+                    commands.driveBackwards(straightspeed, 3, 3, telemetry);
+                    commands.strafeLeft(speed, 2, 2);
+                }
+                if (heading < -20) {
+                    commands.driveBackwards(straightspeed, 3, 3, telemetry);
+                    commands.strafeRight(speed, 2, 2);
                 }
             }
 
-            if (direction == FollowDirection.Strafe) {
-                if (x > 3) {
-                    commands.strafeRight(speed, (abs(x) - cameraOffset) / 3, 3);
-                } else if (x < -3) {
-                    commands.strafeLeft(speed, (abs(x) - cameraOffset) / 3, 3);
+            if (direction == CenterStageEnums.FollowDirection.Rotate) {
+                double targetAngle = getAngle() + heading * angleGain;
+                if (heading > 4) {
+                    commands.spinLeft(speed, targetAngle, 1);
+                } else if (heading < -4) {
+                    commands.spinRight(speed, targetAngle, 1);
                 }
             }
+
+            if (direction == CenterStageEnums.FollowDirection.Strafe) {
+                double strafeTarget = (abs(yaw) * strafeGain - cameraOffset);
+                if (yaw > 4) {
+                    commands.strafeRight(speed, strafeTarget, 3);
+                } else if (yaw < -4) {
+                    commands.strafeLeft(speed, strafeTarget, 3);
+                }
+            }
+            sleep(50);
         }
     }
 
@@ -299,6 +332,8 @@ public class TeleOpDrive extends LinearOpMode {
 
     //allows us to quickly get our z angle
     private double getAngle() {
-        return robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        return robot.imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        //return robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
     }
+
 }

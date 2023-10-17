@@ -7,10 +7,10 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 import java.util.function.Supplier;
 
@@ -22,26 +22,18 @@ public class Commands extends HardwareMapping {
 
     private final ElapsedTime runtime = new ElapsedTime();
 
-    public enum strafeDirection {
-        Right,
-        Left
-    }
     public void servoSetPos(double position) {
         grabberServo.setPosition(position);
     }
-    public enum tapeColor {
-        Blue,
-        Red,
-        Nothing
-    }
-    public tapeColor getTapeColor(float hue, float saturation, float value) {
+
+    public CenterStageEnums.TapeColor getTapeColor(float hue, float saturation, float value) {
         if (hue > 205 && hue < 230) {
-            return tapeColor.Blue;
+            return CenterStageEnums.TapeColor.Blue;
         }
         if (hue > 21 && hue < 38) {
-            return tapeColor.Red;
+            return CenterStageEnums.TapeColor.Red;
         }
-        return tapeColor.Nothing;
+        return CenterStageEnums.TapeColor.Nothing;
     }
 
     // Drive forward
@@ -73,7 +65,7 @@ public class Commands extends HardwareMapping {
 
     // Strafe left
     public void strafeLeft(double power, double distanceInInches, double timeout) {
-        encoderDriveStrafe(power, distanceInInches, strafeDirection.Left,timeout);
+        encoderDriveStrafe(power, distanceInInches, strafeDirection.Left, timeout);
     }
 
     // Strafe right
@@ -93,14 +85,14 @@ public class Commands extends HardwareMapping {
 
         // Determine new target position, and pass to motor controller
         if (direction == strafeDirection.Left) {
-            //TODO Left strafe
+            //Left strafe
             leftBackTarget = leftBackMotor.getCurrentPosition() + newMotorPosition;
             leftFrontTarget = leftFrontMotor.getCurrentPosition() - newMotorPosition;
             rightBackTarget = rightBackMotor.getCurrentPosition() - newMotorPosition;
             rightFrontTarget = rightFrontMotor.getCurrentPosition() + newMotorPosition;
 
         } else {
-            //TODO Right strafe
+            //Right strafe
             leftBackTarget = leftBackMotor.getCurrentPosition() - newMotorPosition;
             leftFrontTarget = leftFrontMotor.getCurrentPosition() + newMotorPosition;
             rightBackTarget = rightBackMotor.getCurrentPosition() + newMotorPosition;
@@ -141,25 +133,17 @@ public class Commands extends HardwareMapping {
         }
         stopDrivingMotors();
     }
-/*    private void gyroTurn(double leftMotorPower, double rightMotorPower, double heading, double timeout) {
-        runtime.reset();
 
-        while (abs(getRemainingAngle(heading)) >= 10 && (runtime.seconds() < timeout)) {
-            leftFrontMotor.setPower(leftMotorPower);
-            leftBackMotor.setPower(leftMotorPower);
-            rightFrontMotor.setPower(rightMotorPower);
-            rightBackMotor.setPower(rightMotorPower);
-        }
-        stopDrivingMotors();
-    }*/
     private double getRemainingAngle(double targetAngle) {
         // calculate angle in -179 to +180 range  (
-        Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        // Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        Orientation angles = imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
         return targetAngle - angles.firstAngle;
     }
 
     private double getAngle() {
-        return imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        //return imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        return imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
     }
 
     public void driveStraightWhile(double power, Supplier<Boolean> keepGoing, double timeout) throws InterruptedException {
@@ -220,6 +204,17 @@ public class Commands extends HardwareMapping {
         setMotorRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
+
+    public boolean reverseMotorDirection() {
+        leftFrontMotor.setDirection(leftFrontMotor.getDirection().inverted());
+        leftBackMotor.setDirection(leftBackMotor.getDirection().inverted());
+        rightFrontMotor.setDirection(rightFrontMotor.getDirection().inverted());
+        rightBackMotor.setDirection(rightBackMotor.getDirection().inverted());
+
+        isReverse = !isReverse;
+        return isReverse;
+    }
+
     private void encoderDriveStraight(double power, double distanceInches, double timeoutS, Telemetry telemetry) {
 
         int newMotorPosition = (int) (distanceInches * COUNTS_PER_INCH);
@@ -240,11 +235,17 @@ public class Commands extends HardwareMapping {
         encoderRunToPosition(power, leftFrontTarget, leftBackTarget, rightFrontTarget, rightBackTarget, timeoutS);
     }
 
-    public void deliverPixel()throws InterruptedException
-    {
-        pixelServo.setPower(.2);
-        sleep(1265);
-        pixelServo.setPower(0);
+    public void deliverPixel() throws InterruptedException {
+        pixelServo.setPosition(.4);
+        sleep(100);
+        pixelServo.setPosition(.6);
+        sleep(100);
+        pixelServo.setPosition(.8);
+        sleep(300);
+        pixelServo.setPosition(.2);
+//        pixelServo.setPower(.2);
+//        sleep(1265);
+//        pixelServo.setPower(0);
     }
 
     private void stopDrivingMotors() {
@@ -252,5 +253,10 @@ public class Commands extends HardwareMapping {
         leftFrontMotor.setPower(0);
         rightBackMotor.setPower(0);
         rightFrontMotor.setPower(0);
+    }
+
+    public enum strafeDirection {
+        Right,
+        Left
     }
 }
