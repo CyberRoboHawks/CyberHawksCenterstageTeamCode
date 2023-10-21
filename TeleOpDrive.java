@@ -7,6 +7,7 @@ import android.util.Size;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -16,6 +17,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 import java.util.List;
 
@@ -26,9 +28,11 @@ public class TeleOpDrive extends LinearOpMode {
     static final double STANDARD_DRIVE_SPEED = .3;
     static final double TURBO_DRIVE_SPEED = .6;
     static final double STRAFE_SPEED = .4;
+    private final ElapsedTime gametime = new ElapsedTime();
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
     Commands commands = new Commands();
     AprilTagProcessor tagProcessor = null;
+    private final ElapsedTime runtime = new ElapsedTime();
     /*static final double LIFT_MAX_UP_POWER = .5;
     static final double LIFT_MAX_DOWN_POWER = .15;
     static final double LIFT_HOLD_POWER = .2;*/
@@ -38,7 +42,9 @@ public class TeleOpDrive extends LinearOpMode {
         telemetry.addData("hasCamera: ", robot.hasCamera);
         telemetry.addData("hasDriveMotors: ", robot.hasDriveMotors);
         telemetry.addData("hasDroneServo: ", robot.hasDroneServo);
+        telemetry.addData("hasGrabberDistance: ", robot.hasGrabberDistance);
         telemetry.addData("hasGrabberServo: ", robot.hasGrabberServo);
+        telemetry.addData("hasGripperSlideServo: ", robot.hasGripperSlideServo);
         telemetry.addData("hasLinearActuatorMotor: ", robot.hasLinearActuatorMotor);
         telemetry.addData("hasPixelServo: ", robot.hasPixelServo);
         telemetry.addData("hasWristServo: ", robot.hasWristServo);
@@ -49,7 +55,9 @@ public class TeleOpDrive extends LinearOpMode {
         // Initialize the hardware variables.
         robot.init(hardwareMap);
         commands.init(hardwareMap);
-
+        if (robot.isRoboHawks) {
+            commands.reverseMotorDirection();
+        }
         double armPower;
         double strafePower;
         double forwardPower;
@@ -57,34 +65,33 @@ public class TeleOpDrive extends LinearOpMode {
         double offsetHeading = 0;
         boolean isReverse = false;
         boolean isGrabberOpen = false;
+        boolean isWristUp = true;
         CenterStageEnums.Position grabberPosition = CenterStageEnums.Position.Up;
-        double liftPower = 0;
 
         if (robot.hasCamera) {
             tagProcessor = new AprilTagProcessor.Builder()
                     .setDrawCubeProjection(true)
                     .setDrawTagID(true)
-                    //.setLensIntrinsics(1452.13,1452.13,653.281,181.125)
                     .build();
             VisionPortal visionPortal = new VisionPortal.Builder()
                     .addProcessor(tagProcessor)
                     .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
-
-                    //.setCameraResolution(new Size(1280, 720))
                     .setCameraResolution(new Size(1920, 1080))
                     .build();
         }
         printRobotStatus();
         telemetry.addData("Status:", "Ready");
-        //telemetry.addData("Driving Mode:", "Robot Centric");
         telemetry.update();
 
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
+        gametime.reset();
+
         //robot.imu.startAccelerationIntegration(new Position(), new Velocity(), 1000);
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
+            telemetry.addData("Status", "Game Time: " + gametime);
 
             if (!isStopRequested() && robot.hasCamera && !gamepad1.a) {
                 int targetId = 5;
@@ -124,15 +131,25 @@ public class TeleOpDrive extends LinearOpMode {
                     rotatePower *= -1;
                 }
                 offsetHeading = 0;
-//                telemetry.addData("left_stick_x", gamepad1.left_stick_x);
-//                telemetry.addData("left_stick_y", gamepad1.left_stick_y);
-//                telemetry.addData("isReverse",isReverse);
-//                telemetry.update();
                 driveFieldCentric(strafePower, forwardPower, rotatePower, drivePower, offsetHeading);
             }
 
             //Co-Driver controller ---------------------
             if (gamepad2 != null) {
+                if (commands.hasGripperSlideServo) {
+                    if (gamepad2.dpad_left) {
+                        robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.FORWARD);
+                        robot.gripperSlideServo.setPower(1);
+                        sleep(100);
+                    } else if (gamepad2.dpad_right) {
+                        robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
+                        robot.gripperSlideServo.setPower(1);
+                        sleep(100);
+                    }
+                    robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
+                    robot.gripperSlideServo.setPower(0);
+                }
+
                 if (gamepad2.a && robot.hasGrabberServo) {
                     if (isGrabberOpen) {
                         commands.servoSetPos(0.4);
@@ -143,76 +160,86 @@ public class TeleOpDrive extends LinearOpMode {
                     sleep(250);
                 }
 
-                if (gamepad1.y && robot.hasDroneServo) {
+                if (gamepad2.y && robot.hasDroneServo) {
                     robot.droneServo.setPosition(1);
                     sleep(500);
                     robot.droneServo.setPosition(0);
                 }
 
-                if (robot.hasWristServo) {
-                    if (gamepad2.dpad_down && grabberPosition == CenterStageEnums.Position.Up) {
-                        robot.wristServo.setDirection(DcMotorSimple.Direction.FORWARD);
-                        robot.wristServo.setPower(.3);
-                        sleep(400);
-                        robot.wristServo.setPower(0);
-                        grabberPosition = CenterStageEnums.Position.Down;
-                    }
-                    if (gamepad2.dpad_up && grabberPosition == CenterStageEnums.Position.Down) {
-                        robot.wristServo.setDirection(DcMotorSimple.Direction.REVERSE);
-                        robot.wristServo.setPower(1);
-                        if (isGrabberOpen) {
-                            sleep(800);
-                        } else {
-                            sleep(1200);
-                        }
-                        robot.wristServo.setPower(0);
-                        grabberPosition = CenterStageEnums.Position.Up;
-                    }
-                }
-
-
-                armPower = -gamepad2.right_stick_y;
-                if (robot.hasArmMotors) {
-                    if (armPower > 0) {
-                        setArmPower(armPower, CenterStageEnums.ArmDirection.Up);
-                    } else if (armPower < 0) {
-                        setArmPower(armPower, CenterStageEnums.ArmDirection.Down);
+                if (gamepad2.x && robot.hasWristServo) {
+                     double distanceCm = robot.grabberDistance.getDistance(DistanceUnit.CM);
+                     if (distanceCm >10) {
+                        robot.wristServo.setPosition(.13);
                     } else {
-                        setArmPower(0, CenterStageEnums.ArmDirection.None);
+                        robot.wristServo.setPosition(0.7);
                     }
-                    // telemetry.addData("arm power:", armPower);
-                    // telemetry.addData("arm position:", robot.armMotorRight.getCurrentPosition());
+                    sleep(200);
                 }
-                //telemetry.update();
+            }
+
+            armPower = -gamepad2.left_stick_y;
+            if (armPower !=0){
+                if (armPower > 0){
+                    setArmPosition(CenterStageEnums.ArmDirection.Up, 2);
+                } else{
+                    setArmPosition(CenterStageEnums.ArmDirection.Down, 2);
+                }
             }
         }
+        telemetry.update();
     }
 
-    private void setArmPower(double power, CenterStageEnums.ArmDirection armDirection) {
+    private void setArmPosition(CenterStageEnums.ArmDirection armDirection, double timeout) {
         if (!robot.hasArmMotors)
             return;
-        // double ease = .4;
-        double position = robot.armMotorRight.getCurrentPosition();
+
+        double position =0;
+        double power = 0;
+        boolean isArmMoving = true;
+
+        runtime.reset();
+
+        while (isArmMoving && (runtime.seconds() < timeout)) {
+            position = robot.armMotorRight.getCurrentPosition();// + robot.armMotorLeft.getCurrentPosition()) / 2.0;
+            telemetry.addData("direction:", armDirection);
+            // 0 - 350
+            if (armDirection == CenterStageEnums.ArmDirection.Up) {
+                if (position < 120) {
+                    power = .10;
+                } else if (position < 200) {
+                    power = .05;
+                } else if (position < 250) {
+                    power = -.15;
+                } else {
+                    power = 0;
+                    isArmMoving = false;
+                }
+            } else if (armDirection == CenterStageEnums.ArmDirection.Down) {
+                if (position > 225) {
+                    power = -.15;
+                } else if (position > 120) {
+                    power = .15;
+                } else if (position > 25) {
+                    power = .075;
+                } else {
+                    power = 0;
+                    isArmMoving = false;
+                }
+            }
+            telemetry.addData("position:", position);
+            telemetry.addData("arm power:", power);
+            telemetry.update();
+            robot.armMotorRight.setPower(power);
+            robot.armMotorLeft.setPower(power);
+            if (power == 0){
+                isArmMoving = false;
+            }
+        }
+        position = robot.armMotorRight.getCurrentPosition();// + robot.armMotorLeft.getCurrentPosition()) / 2.0;
+
+        telemetry.addData("position:", position);
         telemetry.addData("arm power:", power);
-        telemetry.addData("arm direction:", armDirection);
-        telemetry.addData("arm position:", robot.armMotorRight.getCurrentPosition());
-
-//        if (armDirection == ArmDirection.Up && position > 150) {
-//            ease = .3;
-//        }
-//        if (armDirection == ArmDirection.Down && position < 150) {
-//            ease = .3;
-//        }
-//        if (armDirection == ArmDirection.Down && position < 80) {
-//            ease = 1;
-//            power = .1;  // put the brakes on
-//        }
-
-        // power = power * ease;
-        telemetry.addData("arm power eased:", power);
         telemetry.update();
-        robot.armMotorRight.setPower(power);
-        robot.armMotorLeft.setPower(power);
     }
 
     private void followTag(AprilTagProcessor tagProcessor, CenterStageEnums.FollowDirection direction, int targetId) {
@@ -332,8 +359,10 @@ public class TeleOpDrive extends LinearOpMode {
 
     //allows us to quickly get our z angle
     private double getAngle() {
-        return robot.imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
-        //return robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        if (robot.isRoboHawks) {
+            return robot.imuRoboHawks.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        } else {
+            return robot.imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        }
     }
-
 }

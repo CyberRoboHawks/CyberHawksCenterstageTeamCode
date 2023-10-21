@@ -231,7 +231,6 @@ public class Commands extends HardwareMapping {
 //        telemetry.update();
         // Determine new target positions, and pass to motor controller
 
-
         encoderRunToPosition(power, leftFrontTarget, leftBackTarget, rightFrontTarget, rightBackTarget, timeoutS);
     }
 
@@ -243,9 +242,6 @@ public class Commands extends HardwareMapping {
         pixelServo.setPosition(.8);
         sleep(300);
         pixelServo.setPosition(.2);
-//        pixelServo.setPower(.2);
-//        sleep(1265);
-//        pixelServo.setPower(0);
     }
 
     private void stopDrivingMotors() {
