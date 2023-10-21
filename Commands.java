@@ -344,7 +344,7 @@ public class Commands extends HardwareMapping {
         if (distanceCm > 10) { //Move down
             wristServo.setPosition(.13);
         } else { //move up
-            wristServo.setPosition(0.7);
+            wristServo.setPosition(0.75);
         }
         sleep(250);
     }
@@ -383,6 +383,22 @@ public class Commands extends HardwareMapping {
         encoderDriveStrafe(power, distanceInInches, CenterStageEnums.StrafeDirection.Right, timeout);
     }
 
+    public void setArmPosition2(CenterStageEnums.ArmDirection armDirection, double timeout, Telemetry telemetry) {
+        if (!hasArmMotors)
+            return;
+        if (armDirection == CenterStageEnums.ArmDirection.Up) {
+            armMotorRight.setTargetPosition(350);
+            armMotorLeft.setTargetPosition(350);
+
+            // Turn On RUN_TO_POSITION
+            armMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            armMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+            armMotorRight.setPower(.07);
+            armMotorLeft.setPower(.07);
+        }
+    }
+
 
     public void setArmPosition(CenterStageEnums.ArmDirection armDirection, double timeout, Telemetry telemetry) {
         if (!hasArmMotors)
@@ -400,22 +416,22 @@ public class Commands extends HardwareMapping {
             // 0 - 350
             if (armDirection == CenterStageEnums.ArmDirection.Up) {
                 if (position < 120) {
-                    power = .10;
+                    power = .08;
                 } else if (position < 200) {
                     power = .05;
                 } else if (position < 250) {
-                    power = -.15;
+                    power = -.2;
                 } else {
                     power = 0;
                     isArmMoving = false;
                 }
             } else if (armDirection == CenterStageEnums.ArmDirection.Down) {
                 if (position > 225) {
-                    power = -.15;
-                } else if (position > 120) {
-                    power = .15;
+                    power = -.08;
+                } else if (position > 150) {
+                    power = .25;
                 } else if (position > 25) {
-                    power = .075;
+                    power = .1;
                 } else {
                     power = 0;
                     isArmMoving = false;
