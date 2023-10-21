@@ -27,7 +27,9 @@ public class TeleOpDrive extends LinearOpMode {
     private final ElapsedTime gametime = new ElapsedTime();
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
     Commands commands = new Commands();
+
     AprilTagProcessor tagProcessor = null;
+
     private final ElapsedTime runtime = new ElapsedTime();
     /*static final double LIFT_MAX_UP_POWER = .5;
     static final double LIFT_MAX_DOWN_POWER = .15;
@@ -174,8 +176,10 @@ public class TeleOpDrive extends LinearOpMode {
                 if (armPower !=0){
                     if (armPower > 0){
                         commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 2, telemetry);
+                        robot.armPosition= CenterStageEnums.Position.Up;
                     } else{
                         commands.setArmPosition(CenterStageEnums.ArmDirection.Down, 2, telemetry);
+                        robot.armPosition= CenterStageEnums.Position.Down;
                     }
                 }
             }

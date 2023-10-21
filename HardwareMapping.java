@@ -27,6 +27,7 @@ public class HardwareMapping {
     public boolean hasWristServo = false;
     //endregion
 
+    CenterStageEnums.Position armPosition = CenterStageEnums.Position.Down;
     public boolean isRoboHawks = true;
     public boolean isReverse = false;
 
