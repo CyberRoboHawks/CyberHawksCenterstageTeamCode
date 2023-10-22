@@ -1,4 +1,5 @@
 package org.firstinspires.ftc.teamcode;
+
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -26,11 +27,8 @@ public class HardwareMapping {
     public boolean hasPixelServo = false;
     public boolean hasWristServo = false;
     //endregion
-
-    CenterStageEnums.Position armPosition = CenterStageEnums.Position.Down;
     public boolean isRoboHawks = true;
     public boolean isReverse = false;
-
     public DcMotor armMotorRight = null;
     public DcMotor armMotorLeft = null;
     public DcMotor leftFrontMotor = null;
@@ -39,7 +37,6 @@ public class HardwareMapping {
     public DcMotor rightBackMotor = null;
     public DcMotor linearActuatorMotor = null;
     public DistanceSensor grabberDistance;
-
     public WebcamName webCam1 = null;
     public TouchSensor limitSwitchIn = null;
     public TouchSensor limitSwitchOut = null;
@@ -48,10 +45,10 @@ public class HardwareMapping {
     public CRServo gripperSlideServo = null;
     public Servo pixelServo = null;
     public Servo wristServo = null;
-
     public IMU imu = null;
-    public BNO055IMU  imuRoboHawks = null;
+    public BNO055IMU imuRoboHawks = null;
     public ElapsedTime runtime = new ElapsedTime();
+    CenterStageEnums.Position armPosition = CenterStageEnums.Position.Down;
     HardwareMap hardwareMap = null;
 
     /* Initialize standard Hardware interfaces */
@@ -97,12 +94,12 @@ public class HardwareMapping {
         }
         if (canGetDevice("pixelServo")) {
             pixelServo = setupServo("pixelServo", 0.2);
-           // pixelServo.setDirection(DcMotorSimple.Direction.FORWARD);
+            // pixelServo.setDirection(DcMotorSimple.Direction.FORWARD);
             hasPixelServo = true;
         }
 
         if (canGetDevice("wristServo")) {
-           wristServo = setupServo("wristServo", 0.7);
+            wristServo = setupServo("wristServo", 0.75);
             hasWristServo = true;
         }
 //        if (canGetDevice("wristServo")) {
@@ -111,7 +108,7 @@ public class HardwareMapping {
 //            hasWristServo = true;
 //        }
 
-        if (canGetDevice("grabberDistance")){
+        if (canGetDevice("grabberDistance")) {
             grabberDistance = hardwareMap.get(DistanceSensor.class, "grabberDistance");
             hasGrabberDistance = true;
         }
@@ -132,7 +129,7 @@ public class HardwareMapping {
         if (canGetDevice("limitSwitchOut"))
             limitSwitchOut = hardwareMap.get(TouchSensor.class, "limitSwitchOut");
 
-        if (isRoboHawks){
+        if (isRoboHawks) {
             BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
             parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
             imuRoboHawks = hardwareMap.get(BNO055IMU.class, "imu");
@@ -142,7 +139,7 @@ public class HardwareMapping {
             leftBackMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             rightBackMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             rightFrontMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        }else {
+        } else {
             imu = hardwareMap.get(IMU.class, "imu");
         }
     }

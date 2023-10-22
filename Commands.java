@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.telemetry;
 import static java.lang.Math.abs;
 import static java.lang.Thread.sleep;
 
@@ -145,24 +146,22 @@ public class Commands extends HardwareMapping {
     }
 
     private void encoderDriveStraight(double power, double distanceInches, double timeoutS, Telemetry telemetry) {
-
         int newMotorPosition = (int) (distanceInches * COUNTS_PER_INCH);
         int leftBackTarget = leftBackMotor.getCurrentPosition() + newMotorPosition;
         int leftFrontTarget = leftFrontMotor.getCurrentPosition() + newMotorPosition;
         int rightBackTarget = rightBackMotor.getCurrentPosition() + newMotorPosition;
         int rightFrontTarget = rightFrontMotor.getCurrentPosition() + newMotorPosition;
-//        telemetry.addData("Distance",distanceInches);
-//        telemetry.addData("MotorPos",newMotorPosition);
-//        telemetry.addData("leftBack",leftBackTarget);
-//        telemetry.addData("leftFront",leftFrontTarget);
-//        telemetry.addData("rightBack",rightBackTarget);
-//        telemetry.addData("rightFront",rightFrontTarget);
-//        telemetry.update();
+        telemetry.addData("Distance",distanceInches);
+        telemetry.addData("MotorPos",newMotorPosition);
+        telemetry.addData("leftBack",leftBackTarget);
+        telemetry.addData("leftFront",leftFrontTarget);
+        telemetry.addData("rightBack",rightBackTarget);
+        telemetry.addData("rightFront",rightFrontTarget);
+        telemetry.update();
         // Determine new target positions, and pass to motor controller
 
         encoderRunToPosition(power, leftFrontTarget, leftBackTarget, rightFrontTarget, rightBackTarget, timeoutS);
     }
-
 
     private void encoderDriveStrafe(double power, double distanceInches, CenterStageEnums.StrafeDirection direction, double timeoutS) {
         int leftBackTarget = 0;
@@ -220,8 +219,8 @@ public class Commands extends HardwareMapping {
             double straightspeed = .3;
             double targetDistance = 12;
             double heading = tag.ftcPose.bearing;
-            double yaw = tag.ftcPose.yaw;//tag.ftcPose.x;
-            double distance = tag.ftcPose.range;//tag.ftcPose.y;
+            double yaw = tag.ftcPose.yaw;
+            double distance = tag.ftcPose.range;
             double cameraOffset = 0;
             //boolean currentside = true; // true is right size, false is left side
 
@@ -309,6 +308,29 @@ public class Commands extends HardwareMapping {
         droneServo.setPosition(0);
     }
 
+    public void moveLinearActuator(double linearActuatorPower) {
+        if (linearActuatorPower > 0 && !limitSwitchOut.isPressed()) {
+            linearActuatorMotor.setPower(linearActuatorPower);
+        } else if (linearActuatorPower < 0 && !limitSwitchIn.isPressed()) {
+            linearActuatorMotor.setPower(linearActuatorPower);
+        } else {
+            linearActuatorMotor.setPower(0);
+        }
+    }
+
+    public void printRobotStatus(Telemetry telemetry) {
+        telemetry.addData("hasArmMotors: ", hasArmMotors);
+        telemetry.addData("hasCamera: ", hasCamera);
+        telemetry.addData("hasDriveMotors: ", hasDriveMotors);
+        telemetry.addData("hasDroneServo: ", hasDroneServo);
+        telemetry.addData("hasGrabberDistance: ", hasGrabberDistance);
+        telemetry.addData("hasGrabberServo: ", hasGrabberServo);
+        telemetry.addData("hasGripperSlideServo: ", hasGripperSlideServo);
+        telemetry.addData("hasLinearActuatorMotor: ", hasLinearActuatorMotor);
+        telemetry.addData("hasPixelServo: ", hasPixelServo);
+        telemetry.addData("hasWristServo: ", hasWristServo);
+    }
+
     public void quickSpin(double power, double heading, double timeout) {
         double currentAngle = getAngle();
         if (currentAngle < 0) {
@@ -348,6 +370,15 @@ public class Commands extends HardwareMapping {
         }
         sleep(250);
     }
+    public void setWristPosition(CenterStageEnums.Position position) throws InterruptedException {
+        if (position == CenterStageEnums.Position.Down) {
+            wristServo.setPosition(.13);
+        }
+         else if (position == CenterStageEnums.Position.Up){
+            wristServo.setPosition(0.75);
+        }
+        sleep(250);
+    }
 
     public void setWristPositionBackdrop() throws InterruptedException {
         wristServo.setPosition(0.59);
@@ -383,75 +414,102 @@ public class Commands extends HardwareMapping {
         encoderDriveStrafe(power, distanceInInches, CenterStageEnums.StrafeDirection.Right, timeout);
     }
 
-    public void setArmPosition2(CenterStageEnums.ArmDirection armDirection, double timeout, Telemetry telemetry) {
+    public void setArmPosition(CenterStageEnums.ArmDirection armDirection, double timeout, Telemetry telemetry) throws InterruptedException {
         if (!hasArmMotors)
             return;
-        if (armDirection == CenterStageEnums.ArmDirection.Up) {
-            armMotorRight.setTargetPosition(350);
-            armMotorLeft.setTargetPosition(350);
-
-            // Turn On RUN_TO_POSITION
-            armMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            armMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-            armMotorRight.setPower(.07);
-            armMotorLeft.setPower(.07);
-        }
-    }
-
-
-    public void setArmPosition(CenterStageEnums.ArmDirection armDirection, double timeout, Telemetry telemetry) {
-        if (!hasArmMotors)
-            return;
-
-        double position = 0;
-        double power = 0;
-        boolean isArmMoving = true;
-
         runtime.reset();
-
-        while (isArmMoving && (runtime.seconds() < timeout)) {
-            position = armMotorRight.getCurrentPosition();// + robot.armMotorLeft.getCurrentPosition()) / 2.0;
-            telemetry.addData("direction:", armDirection);
-            // 0 - 350
-            if (armDirection == CenterStageEnums.ArmDirection.Up) {
-                if (position < 120) {
-                    power = .08;
-                } else if (position < 200) {
-                    power = .05;
-                } else if (position < 250) {
-                    power = -.2;
-                } else {
-                    power = 0;
-                    isArmMoving = false;
-                }
-            } else if (armDirection == CenterStageEnums.ArmDirection.Down) {
-                if (position > 225) {
-                    power = -.08;
-                } else if (position > 150) {
-                    power = .25;
-                } else if (position > 25) {
-                    power = .1;
-                } else {
-                    power = 0;
-                    isArmMoving = false;
-                }
-            }
-            telemetry.addData("position:", position);
-            telemetry.addData("arm power:", power);
-            telemetry.update();
-            armMotorRight.setPower(power);
-            armMotorLeft.setPower(power);
-            if (power == 0) {
-                isArmMoving = false;
-            }
+        int target = 175;
+        double power = .07;
+        if (armDirection == CenterStageEnums.ArmDirection.Up) {
+            target = 235;
         }
-        position = armMotorRight.getCurrentPosition();// + robot.armMotorLeft.getCurrentPosition()) / 2.0;
+        armMotorRight.setTargetPosition(target);
+        armMotorLeft.setTargetPosition(target);
 
-        telemetry.addData("position:", position);
-        telemetry.addData("arm power:", power);
-        telemetry.update();
+        armMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        armMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//        armMotorRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+//        armMotorLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        armMotorRight.setPower(power);
+        armMotorLeft.setPower(power);
+
+        while ((runtime.seconds() < timeout) &&
+                (armMotorRight.isBusy() && armMotorLeft.isBusy())) {
+
+            // Display it for the driver.
+            telemetry.addData("Running to",  " %7d", target);
+            telemetry.addData("Currently at",  " at %7d :%7d",
+                    armMotorRight.getCurrentPosition(), armMotorLeft.getCurrentPosition());
+            telemetry.update();
+        }
+        if (armDirection == CenterStageEnums.ArmDirection.Up) {
+            armMotorRight.setPower(-.25);
+            armMotorLeft.setPower(-.25);
+        }
+        if (armDirection == CenterStageEnums.ArmDirection.Down) {
+            armMotorRight.setPower(.5);
+            armMotorLeft.setPower(.5);
+        }
+        sleep(250);
+
+        // Stop all motion;
+        armMotorLeft.setPower(0);
+        armMotorRight.setPower(0);
     }
+
+
+//    public void setArmPosition(CenterStageEnums.ArmDirection armDirection, double timeout, Telemetry telemetry) {
+//        if (!hasArmMotors)
+//            return;
+//
+//        double position = 0;
+//        double power = 0;
+//        boolean isArmMoving = true;
+//
+//        runtime.reset();
+//
+//        while (isArmMoving && (runtime.seconds() < timeout)) {
+//            position = armMotorRight.getCurrentPosition();// + robot.armMotorLeft.getCurrentPosition()) / 2.0;
+//            telemetry.addData("direction:", armDirection);
+//            // 0 - 350
+//            if (armDirection == CenterStageEnums.ArmDirection.Up) {
+//                if (position < 120) {
+//                    power = .08;
+//                } else if (position < 200) {
+//                    power = .05;
+//                } else if (position < 250) {
+//                    power = -.2;
+//                } else {
+//                    power = 0;
+//                    isArmMoving = false;
+//                }
+//            } else if (armDirection == CenterStageEnums.ArmDirection.Down) {
+//                if (position > 225) {
+//                    power = -.08;
+//                } else if (position > 150) {
+//                    power = .25;
+//                } else if (position > 25) {
+//                    power = .1;
+//                } else {
+//                    power = 0;
+//                    isArmMoving = false;
+//                }
+//            }
+//            telemetry.addData("position:", position);
+//            telemetry.addData("arm power:", power);
+//            telemetry.update();
+//            armMotorRight.setPower(power);
+//            armMotorLeft.setPower(power);
+//            if (power == 0) {
+//                isArmMoving = false;
+//            }
+//        }
+//        position = armMotorRight.getCurrentPosition();// + robot.armMotorLeft.getCurrentPosition()) / 2.0;
+//
+//        telemetry.addData("position:", position);
+//        telemetry.addData("arm power:", power);
+//        telemetry.update();
+//    }
 
     private void stopDrivingMotors() {
         leftBackMotor.setPower(0);

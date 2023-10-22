@@ -35,18 +35,18 @@ public class TeleOpDrive extends LinearOpMode {
     static final double LIFT_MAX_DOWN_POWER = .15;
     static final double LIFT_HOLD_POWER = .2;*/
 
-    public void printRobotStatus() {
-        telemetry.addData("hasArmMotors: ", robot.hasArmMotors);
-        telemetry.addData("hasCamera: ", robot.hasCamera);
-        telemetry.addData("hasDriveMotors: ", robot.hasDriveMotors);
-        telemetry.addData("hasDroneServo: ", robot.hasDroneServo);
-        telemetry.addData("hasGrabberDistance: ", robot.hasGrabberDistance);
-        telemetry.addData("hasGrabberServo: ", robot.hasGrabberServo);
-        telemetry.addData("hasGripperSlideServo: ", robot.hasGripperSlideServo);
-        telemetry.addData("hasLinearActuatorMotor: ", robot.hasLinearActuatorMotor);
-        telemetry.addData("hasPixelServo: ", robot.hasPixelServo);
-        telemetry.addData("hasWristServo: ", robot.hasWristServo);
-    }
+//    public void printRobotStatus() {
+//        telemetry.addData("hasArmMotors: ", robot.hasArmMotors);
+//        telemetry.addData("hasCamera: ", robot.hasCamera);
+//        telemetry.addData("hasDriveMotors: ", robot.hasDriveMotors);
+//        telemetry.addData("hasDroneServo: ", robot.hasDroneServo);
+//        telemetry.addData("hasGrabberDistance: ", robot.hasGrabberDistance);
+//        telemetry.addData("hasGrabberServo: ", robot.hasGrabberServo);
+//        telemetry.addData("hasGripperSlideServo: ", robot.hasGripperSlideServo);
+//        telemetry.addData("hasLinearActuatorMotor: ", robot.hasLinearActuatorMotor);
+//        telemetry.addData("hasPixelServo: ", robot.hasPixelServo);
+//        telemetry.addData("hasWristServo: ", robot.hasWristServo);
+//    }
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -77,8 +77,8 @@ public class TeleOpDrive extends LinearOpMode {
                     .setCameraResolution(new Size(1920, 1080))
                     .build();
         }
-        printRobotStatus();
         telemetry.addData("Status:", "Ready");
+        commands.printRobotStatus(telemetry);
         telemetry.update();
 
         // Wait for the game to start (driver presses PLAY)
@@ -163,8 +163,9 @@ public class TeleOpDrive extends LinearOpMode {
                     sleep(250);
                 }
 
-                // could prevent early launch with && gameTimer > 90
-                if (gamepad2.y && robot.hasDroneServo) {
+                // prevent early launch with gameTimer check for endgame
+                if (gamepad2.y && robot.hasDroneServo){
+                        //&& ((gamepad2.y && gametime.seconds() > 90){
                     commands.launchDrone();
                 }
 
@@ -175,12 +176,20 @@ public class TeleOpDrive extends LinearOpMode {
                 armPower = -gamepad2.left_stick_y;
                 if (armPower !=0){
                     if (armPower > 0){
-                        commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 2, telemetry);
+                        commands.setWristPosition(CenterStageEnums.Position.Up);
+                        commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3, telemetry);
                         robot.armPosition= CenterStageEnums.Position.Up;
-                    } else{
-                        commands.setArmPosition(CenterStageEnums.ArmDirection.Down, 2, telemetry);
+                        commands.setWristPositionBackdrop();
+                    }
+                    else{
+                        commands.setWristPosition(CenterStageEnums.Position.Up);
+                        commands.setArmPosition(CenterStageEnums.ArmDirection.Down, 3, telemetry);
                         robot.armPosition= CenterStageEnums.Position.Down;
                     }
+                }
+
+                if (gamepad2.right_stick_y !=0 && robot.hasLinearActuatorMotor ){
+                    commands.moveLinearActuator(-gamepad2.right_stick_y);
                 }
             }
         }
