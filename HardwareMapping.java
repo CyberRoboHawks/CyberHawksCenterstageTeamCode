@@ -47,7 +47,8 @@ public class HardwareMapping {
     public Servo wristServo = null;
     public IMU imu = null;
     public BNO055IMU imuRoboHawks = null;
-    public ElapsedTime runtime = new ElapsedTime();
+    public int armPositionTarget = 0;
+
     CenterStageEnums.Position armPosition = CenterStageEnums.Position.Down;
     HardwareMap hardwareMap = null;
 
@@ -61,12 +62,12 @@ public class HardwareMapping {
         if (canGetDevice("armMotorLeft"))
             armMotorLeft = setupMotor("armMotorLeft", DcMotor.Direction.REVERSE, 0, true, true);
         hasArmMotors = (canGetDevice("armMotorRight") && canGetDevice("armMotorLeft"));
-//        if (hasArmMotors){
-//            armMotorRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-//            armMotorLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-//            armMotorRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-//            armMotorLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-//        }
+        if (hasArmMotors){
+            armMotorRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            armMotorLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            armMotorRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            armMotorLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
 
         if (canGetDevice("Webcam 1")) {
             webCam1 = setupWebcam("Webcam 1");
@@ -135,15 +136,19 @@ public class HardwareMapping {
             imuRoboHawks = hardwareMap.get(BNO055IMU.class, "imu");
             imuRoboHawks.initialize(parameters);
 
-            leftFrontMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            leftBackMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            rightBackMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            rightFrontMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            stopAndRestMotorEncoders(leftFrontMotor);
+            stopAndRestMotorEncoders(leftBackMotor);
+            stopAndRestMotorEncoders(rightFrontMotor);
+            stopAndRestMotorEncoders(rightBackMotor);
         } else {
             imu = hardwareMap.get(IMU.class, "imu");
         }
     }
 
+    private void stopAndRestMotorEncoders(DcMotor motor){
+        motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    }
     private boolean canGetDevice(String deviceName) {
         try {
             hardwareMap.get(deviceName);

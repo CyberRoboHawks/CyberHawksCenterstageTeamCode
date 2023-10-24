@@ -53,9 +53,9 @@ public class TeleOpDrive extends LinearOpMode {
         // Initialize the hardware variables.
         robot.init(hardwareMap);
         commands.init(hardwareMap);
-        if (robot.isRoboHawks) {
-            commands.reverseDriveMotorDirection();
-        }
+//        if (robot.isRoboHawks) {
+//            commands.reverseDriveMotorDirection();
+//        }
         double armPower;
         double strafePower;
         double forwardPower;
@@ -122,6 +122,23 @@ public class TeleOpDrive extends LinearOpMode {
                     commands.deliverGroundPixel();
                 }
 
+                // test
+                if (gamepad1.dpad_up && robot.hasArmMotors && robot.isRoboHawks) {
+                    commands.setArmPositionRH(CenterStageEnums.ArmDirection.Up, telemetry);
+                    sleep(250);
+                }
+                if (gamepad1.dpad_down && robot.hasArmMotors && robot.isRoboHawks) {
+                    commands.setArmPositionRH(CenterStageEnums.ArmDirection.Down, telemetry);
+                    sleep(250);
+                    commands.setArmPower(0);
+                }
+                if (robot.armPositionTarget != robot.armMotorRight.getCurrentPosition()){
+                    telemetry.addData("current arm pos", robot.armMotorRight.getCurrentPosition());
+                    telemetry.addData("current arm target",robot.armPositionTarget);
+                    telemetry.update();
+                    //commands.setArmPosition(robot.armPositionTarget);
+                }
+
                 // test - will only be auton action
                 if (gamepad1.x && robot.hasWristServo) {
                     commands.setWristPositionBackdrop();
@@ -173,13 +190,15 @@ public class TeleOpDrive extends LinearOpMode {
                     commands.reverseWristPosition();
                 }
 
+                if (gamepad2.b && robot.hasGrabberDistance){
+                    commands.approachBackdrop(10,3, telemetry);
+                }
+
                 armPower = -gamepad2.left_stick_y;
                 if (armPower !=0){
                     if (armPower > 0){
-                        commands.setWristPosition(CenterStageEnums.Position.Up);
                         commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3, telemetry);
                         robot.armPosition= CenterStageEnums.Position.Up;
-                        commands.setWristPositionBackdrop();
                     }
                     else{
                         commands.setWristPosition(CenterStageEnums.Position.Up);

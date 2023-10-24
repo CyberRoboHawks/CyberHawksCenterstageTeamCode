@@ -4,6 +4,7 @@ import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.tel
 import static java.lang.Math.abs;
 import static java.lang.Thread.sleep;
 
+import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
@@ -30,6 +31,22 @@ public class Commands extends HardwareMapping {
 
     private final ElapsedTime runtime = new ElapsedTime();
 
+    public void approachBackdrop(double distanceTarget, double timeout, Telemetry telemetry) throws InterruptedException {
+        double distanceCm = grabberDistance.getDistance(DistanceUnit.CM);
+        ElapsedTime approachRuntime = new ElapsedTime();
+        approachRuntime.reset();
+        double stepDistance = 2;
+        while (approachRuntime.seconds() < timeout && distanceCm > distanceTarget) {
+//            telemetry.addData("distance", distanceCm);
+//            telemetry.update();
+//            sleep(500);
+            if (distanceCm < 10)
+                stepDistance = 1;
+            driveForward(.1, stepDistance, 1, telemetry);
+            distanceCm = grabberDistance.getDistance(DistanceUnit.CM);
+        }
+    }
+
     public void deliverGroundPixel() throws InterruptedException {
         pixelServo.setPosition(.4);
         sleep(100);
@@ -40,11 +57,11 @@ public class Commands extends HardwareMapping {
         pixelServo.setPosition(.2);
     }
 
-    public void driveBackwards(double power, double distanceInInches, double timeout, Telemetry telemetry) {
+    public void driveBackwards(double power, double distanceInInches, double timeout, Telemetry telemetry) throws InterruptedException {
         encoderDriveStraight(power, -distanceInInches, timeout, telemetry);
     }
 
-    public void driveForward(double power, double distanceInInches, double timeout, Telemetry telemetry) {
+    public void driveForward(double power, double distanceInInches, double timeout, Telemetry telemetry) throws InterruptedException {
         encoderDriveStraight(power, distanceInInches, timeout, telemetry);
     }
 
@@ -145,21 +162,20 @@ public class Commands extends HardwareMapping {
         setMotorRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
-    private void encoderDriveStraight(double power, double distanceInches, double timeoutS, Telemetry telemetry) {
+    private void encoderDriveStraight(double power, double distanceInches, double timeoutS, Telemetry telemetry) throws InterruptedException{
         int newMotorPosition = (int) (distanceInches * COUNTS_PER_INCH);
         int leftBackTarget = leftBackMotor.getCurrentPosition() + newMotorPosition;
         int leftFrontTarget = leftFrontMotor.getCurrentPosition() + newMotorPosition;
         int rightBackTarget = rightBackMotor.getCurrentPosition() + newMotorPosition;
         int rightFrontTarget = rightFrontMotor.getCurrentPosition() + newMotorPosition;
-        telemetry.addData("Distance",distanceInches);
-        telemetry.addData("MotorPos",newMotorPosition);
-        telemetry.addData("leftBack",leftBackTarget);
-        telemetry.addData("leftFront",leftFrontTarget);
-        telemetry.addData("rightBack",rightBackTarget);
-        telemetry.addData("rightFront",rightFrontTarget);
-        telemetry.update();
+//        telemetry.addData("Distance", distanceInches);
+//        telemetry.addData("MotorPos", newMotorPosition);
+//        telemetry.addData("leftBack", leftBackTarget);
+//        telemetry.addData("leftFront", leftFrontTarget);
+//        telemetry.addData("rightBack", rightBackTarget);
+//        telemetry.addData("rightFront", rightFrontTarget);
+//        telemetry.update();
         // Determine new target positions, and pass to motor controller
-
         encoderRunToPosition(power, leftFrontTarget, leftBackTarget, rightFrontTarget, rightBackTarget, timeoutS);
     }
 
@@ -217,12 +233,11 @@ public class Commands extends HardwareMapping {
             telemetry.update();
             double speed = .3;
             double straightspeed = .3;
-            double targetDistance = 12;
+            double targetDistance = 8;
             double heading = tag.ftcPose.bearing;
             double yaw = tag.ftcPose.yaw;
             double distance = tag.ftcPose.range;
             double cameraOffset = 0;
-            //boolean currentside = true; // true is right size, false is left side
 
             double angleGain = .3;
             double strafeGain = .2;
@@ -239,16 +254,25 @@ public class Commands extends HardwareMapping {
                 }
                 if (heading > 20) {
                     driveBackwards(straightspeed, 3, 3, telemetry);
-                    strafeLeft(speed, 2, 2);
+                    if (isReverse){
+                        strafeRight(speed, 2, 2);
+                    } else{
+                        strafeLeft(speed, 2, 2);
+                    }
                 }
                 if (heading < -20) {
                     driveBackwards(straightspeed, 3, 3, telemetry);
-                    strafeRight(speed, 2, 2);
+                    if (isReverse){
+                        strafeLeft(speed, 2, 2);
+                    } else{
+                        strafeRight(speed, 2, 2);
+                    }
                 }
             }
 
             if (direction == CenterStageEnums.FollowDirection.Rotate) {
                 double targetAngle = getAngle() + heading * angleGain;
+                telemetry.addData("target angle", targetAngle);
                 if (heading > 4) {
                     spinLeft(speed, targetAngle, 1);
                 } else if (heading < -4) {
@@ -259,9 +283,18 @@ public class Commands extends HardwareMapping {
             if (direction == CenterStageEnums.FollowDirection.Strafe) {
                 double strafeTarget = (abs(yaw) * strafeGain - cameraOffset);
                 if (yaw > 4) {
-                    strafeRight(speed, strafeTarget, 3);
+/*                    if (isReverse){
+                        strafeLeft(speed, strafeTarget, 3);
+                    }
+                    else {*/
+                        strafeRight(speed, strafeTarget, 3);
+                   // }
                 } else if (yaw < -4) {
-                    strafeLeft(speed, strafeTarget, 3);
+//                    if (isReverse){
+//                        strafeRight(speed, strafeTarget, 3);
+//                    }else{
+                        strafeLeft(speed, strafeTarget, 3);
+                 //   }
                 }
             }
             sleep(50);
@@ -269,14 +302,22 @@ public class Commands extends HardwareMapping {
     }
 
     private double getAngle() {
-        //return imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
-        return imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        if (isRoboHawks){
+            return imuRoboHawks.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        }else {
+            return imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+        }
     }
 
     private double getRemainingAngle(double targetAngle) {
         // calculate angle in -179 to +180 range  (
-        // Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-        Orientation angles = imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        Orientation angles;
+        if (isRoboHawks){
+            angles = imuRoboHawks.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        }
+        else{
+            angles = imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        }
         return targetAngle - angles.firstAngle;
     }
 
@@ -350,7 +391,9 @@ public class Commands extends HardwareMapping {
             }
         }
     }
-
+    public void retractLinearActuator() {
+        moveLinearActuator(-1);
+    }
     public boolean reverseDriveMotorDirection() {
         leftFrontMotor.setDirection(leftFrontMotor.getDirection().inverted());
         leftBackMotor.setDirection(leftBackMotor.getDirection().inverted());
@@ -370,11 +413,11 @@ public class Commands extends HardwareMapping {
         }
         sleep(250);
     }
+
     public void setWristPosition(CenterStageEnums.Position position) throws InterruptedException {
         if (position == CenterStageEnums.Position.Down) {
             wristServo.setPosition(.13);
-        }
-         else if (position == CenterStageEnums.Position.Up){
+        } else if (position == CenterStageEnums.Position.Up) {
             wristServo.setPosition(0.75);
         }
         sleep(250);
@@ -414,22 +457,65 @@ public class Commands extends HardwareMapping {
         encoderDriveStrafe(power, distanceInInches, CenterStageEnums.StrafeDirection.Right, timeout);
     }
 
+    public void setArmPositionRH(CenterStageEnums.ArmDirection armDirection, Telemetry telemetry) throws InterruptedException {
+        if (!hasArmMotors)
+            return;
+
+        int step = 40;
+        double power = .5;
+
+        telemetry.addData("position", armPositionTarget);
+        telemetry.addData("armMotorRight", armMotorRight.getCurrentPosition());
+        telemetry.addData("armMotorLeft", armMotorLeft.getCurrentPosition());
+        telemetry.update();
+
+        if (armDirection == CenterStageEnums.ArmDirection.Up){
+            armPositionTarget = armPositionTarget + step;
+        }
+        else if (armDirection == CenterStageEnums.ArmDirection.Down){
+            armPositionTarget = 10;
+            setArmPosition(armPositionTarget);
+            sleep(2000);
+            // Stop all motion;
+            armPositionTarget = 0;
+        }
+        setArmPosition(armPositionTarget);
+        sleep(250);
+        armMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        armMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        setArmPower(power);
+        sleep(1000);
+        telemetry.addData("position", armPositionTarget);
+        telemetry.addData("armMotorRight", armMotorRight.getCurrentPosition());
+        telemetry.addData("armMotorLeft", armMotorLeft.getCurrentPosition());
+        telemetry.update();
+    }
+
     public void setArmPosition(CenterStageEnums.ArmDirection armDirection, double timeout, Telemetry telemetry) throws InterruptedException {
         if (!hasArmMotors)
             return;
+
         runtime.reset();
         int target = 175;
         double power = .07;
         if (armDirection == CenterStageEnums.ArmDirection.Up) {
+            if (hasWristServo){
+                setWristPosition(CenterStageEnums.Position.Up);
+            }
             target = 235;
+        }
+        if (armDirection == CenterStageEnums.ArmDirection.Down) {
+            if (hasWristServo){
+                setWristPosition(CenterStageEnums.Position.Up);
+            }
         }
         armMotorRight.setTargetPosition(target);
         armMotorLeft.setTargetPosition(target);
 
         armMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         armMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        armMotorRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-//        armMotorLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        armMotorRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+       armMotorLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         armMotorRight.setPower(power);
         armMotorLeft.setPower(power);
 
@@ -437,8 +523,8 @@ public class Commands extends HardwareMapping {
                 (armMotorRight.isBusy() && armMotorLeft.isBusy())) {
 
             // Display it for the driver.
-            telemetry.addData("Running to",  " %7d", target);
-            telemetry.addData("Currently at",  " at %7d :%7d",
+            telemetry.addData("Running to", " %7d", target);
+            telemetry.addData("Currently at", " at %7d :%7d",
                     armMotorRight.getCurrentPosition(), armMotorLeft.getCurrentPosition());
             telemetry.update();
         }
@@ -453,63 +539,22 @@ public class Commands extends HardwareMapping {
         sleep(250);
 
         // Stop all motion;
-        armMotorLeft.setPower(0);
-        armMotorRight.setPower(0);
+        setArmPower(0);
+
+
+        if (armDirection == CenterStageEnums.ArmDirection.Up && hasWristServo){
+            setWristPositionBackdrop();
+        }
     }
 
-
-//    public void setArmPosition(CenterStageEnums.ArmDirection armDirection, double timeout, Telemetry telemetry) {
-//        if (!hasArmMotors)
-//            return;
-//
-//        double position = 0;
-//        double power = 0;
-//        boolean isArmMoving = true;
-//
-//        runtime.reset();
-//
-//        while (isArmMoving && (runtime.seconds() < timeout)) {
-//            position = armMotorRight.getCurrentPosition();// + robot.armMotorLeft.getCurrentPosition()) / 2.0;
-//            telemetry.addData("direction:", armDirection);
-//            // 0 - 350
-//            if (armDirection == CenterStageEnums.ArmDirection.Up) {
-//                if (position < 120) {
-//                    power = .08;
-//                } else if (position < 200) {
-//                    power = .05;
-//                } else if (position < 250) {
-//                    power = -.2;
-//                } else {
-//                    power = 0;
-//                    isArmMoving = false;
-//                }
-//            } else if (armDirection == CenterStageEnums.ArmDirection.Down) {
-//                if (position > 225) {
-//                    power = -.08;
-//                } else if (position > 150) {
-//                    power = .25;
-//                } else if (position > 25) {
-//                    power = .1;
-//                } else {
-//                    power = 0;
-//                    isArmMoving = false;
-//                }
-//            }
-//            telemetry.addData("position:", position);
-//            telemetry.addData("arm power:", power);
-//            telemetry.update();
-//            armMotorRight.setPower(power);
-//            armMotorLeft.setPower(power);
-//            if (power == 0) {
-//                isArmMoving = false;
-//            }
-//        }
-//        position = armMotorRight.getCurrentPosition();// + robot.armMotorLeft.getCurrentPosition()) / 2.0;
-//
-//        telemetry.addData("position:", position);
-//        telemetry.addData("arm power:", power);
-//        telemetry.update();
-//    }
+    public void setArmPower(double power){
+        armMotorRight.setPower(power);
+        armMotorLeft.setPower(power);
+    }
+    public void setArmPosition(int position){
+        armMotorRight.setTargetPosition(position);
+        armMotorLeft.setTargetPosition(position);
+    }
 
     private void stopDrivingMotors() {
         leftBackMotor.setPower(0);
