@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
@@ -17,6 +18,7 @@ public class HardwareMapping {
     //region robot "has" properties
     public boolean hasArmMotors = false;
     public boolean hasCamera = false;
+    public boolean hasColorSensor = false;
     public boolean hasDriveMotors = false;
     public boolean hasDroneServo = false;
     public boolean hasGrabberDistance = false;
@@ -37,6 +39,7 @@ public class HardwareMapping {
     public DcMotor linearActuatorMotor = null;
     public DistanceSensor grabberDistance;
     public WebcamName webCam1 = null;
+    public ColorSensor colorSensor = null;
     public TouchSensor limitSwitchIn = null;
     public TouchSensor limitSwitchOut = null;
     public Servo droneServo = null;
@@ -71,6 +74,11 @@ public class HardwareMapping {
         if (canGetDevice("Webcam 1")) {
             webCam1 = setupWebcam("Webcam 1");
             hasCamera = true;
+        }
+
+        if (canGetDevice("colorSensor")){
+            colorSensor = hardwareMap.get(ColorSensor.class, "colorSensor");
+            hasColorSensor = true;
         }
 
         if (canGetDevice("leftFrontMotor") && canGetDevice("leftBackMotor")
@@ -114,7 +122,7 @@ public class HardwareMapping {
         }
 
         if (canGetDevice("linearActuatorMotor")) {
-            linearActuatorMotor = setupMotor("linearActuatorMotor", DcMotor.Direction.FORWARD, 0, false, true);
+            linearActuatorMotor = setupMotor("linearActuatorMotor", DcMotor.Direction.FORWARD, 0, true, true);
             hasLinearActuatorMotor = true;
         }
 
@@ -133,6 +141,7 @@ public class HardwareMapping {
             stopAndRestMotorEncoders(leftBackMotor);
             stopAndRestMotorEncoders(rightFrontMotor);
             stopAndRestMotorEncoders(rightBackMotor);
+            stopAndRestMotorEncoders(linearActuatorMotor);
         } else {
             imu = hardwareMap.get(IMU.class, "imu");
         }

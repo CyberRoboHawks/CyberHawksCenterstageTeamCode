@@ -1,10 +1,10 @@
 package org.firstinspires.ftc.teamcode;
 
-import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.telemetry;
 import static java.lang.Math.abs;
 import static java.lang.Thread.sleep;
 
-import com.qualcomm.hardware.bosch.BNO055IMU;
+import android.graphics.Color;
+
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
@@ -26,10 +26,9 @@ public class Commands extends HardwareMapping {
     static final double COUNTS_PER_MOTOR_REV = 537.7;//384.5;    // eg: TETRIX Motor Encoder (1440 - 60:1; 960 - 40:1, 480 - 20:1)
     static final double WHEEL_DIAMETER_INCHES = 3.75;   // For figuring circumference
     static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV) / (WHEEL_DIAMETER_INCHES * Math.PI);
-
     static final double STRAFE_SPEED = .4;
-
     private final ElapsedTime runtime = new ElapsedTime();
+    float hsvValues[] = {0F, 0F, 0F};
 
     public void approachBackdrop(double distanceTarget, double timeout, Telemetry telemetry) throws InterruptedException {
         double distanceCm = grabberDistance.getDistance(DistanceUnit.CM);
@@ -37,13 +36,27 @@ public class Commands extends HardwareMapping {
         approachRuntime.reset();
         double stepDistance = 2;
         while (approachRuntime.seconds() < timeout && distanceCm > distanceTarget) {
-//            telemetry.addData("distance", distanceCm);
-//            telemetry.update();
-//            sleep(500);
             if (distanceCm < 10)
                 stepDistance = 1;
             driveForward(.1, stepDistance, 1, telemetry);
             distanceCm = grabberDistance.getDistance(DistanceUnit.CM);
+        }
+    }
+
+    public void approachTape(CenterStageEnums.TapeColor color, double timeout, Telemetry telemetry) throws InterruptedException {
+        boolean colorFound = false;
+        ElapsedTime approachRuntime = new ElapsedTime();
+        approachRuntime.reset();
+
+        if (color == CenterStageEnums.TapeColor.Red) {
+            while (!colorFound && approachRuntime.seconds() < timeout) {
+                Color.RGBToHSV(colorSensor.red() * 8, colorSensor.green() * 8, colorSensor.blue() * 8, hsvValues);
+                if (getTapeColor(hsvValues[0], hsvValues[1], hsvValues[2]) == CenterStageEnums.TapeColor.Red) {
+                    colorFound = true;
+                    break;
+                }
+                driveForward(.2, 1, 3, telemetry);
+            }
         }
     }
 
@@ -162,7 +175,7 @@ public class Commands extends HardwareMapping {
         setMotorRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
-    private void encoderDriveStraight(double power, double distanceInches, double timeoutS, Telemetry telemetry) throws InterruptedException{
+    private void encoderDriveStraight(double power, double distanceInches, double timeoutS, Telemetry telemetry) throws InterruptedException {
         int newMotorPosition = (int) (distanceInches * COUNTS_PER_INCH);
         int leftBackTarget = leftBackMotor.getCurrentPosition() + newMotorPosition;
         int leftFrontTarget = leftFrontMotor.getCurrentPosition() + newMotorPosition;
@@ -254,17 +267,17 @@ public class Commands extends HardwareMapping {
                 }
                 if (heading > 20) {
                     driveBackwards(straightspeed, 3, 3, telemetry);
-                    if (isReverse){
+                    if (isReverse) {
                         strafeRight(speed, 2, 2);
-                    } else{
+                    } else {
                         strafeLeft(speed, 2, 2);
                     }
                 }
                 if (heading < -20) {
                     driveBackwards(straightspeed, 3, 3, telemetry);
-                    if (isReverse){
+                    if (isReverse) {
                         strafeLeft(speed, 2, 2);
-                    } else{
+                    } else {
                         strafeRight(speed, 2, 2);
                     }
                 }
@@ -287,14 +300,14 @@ public class Commands extends HardwareMapping {
                         strafeLeft(speed, strafeTarget, 3);
                     }
                     else {*/
-                        strafeRight(speed, strafeTarget, 3);
-                   // }
+                    strafeRight(speed, strafeTarget, 3);
+                    // }
                 } else if (yaw < -4) {
 //                    if (isReverse){
 //                        strafeRight(speed, strafeTarget, 3);
 //                    }else{
-                        strafeLeft(speed, strafeTarget, 3);
-                 //   }
+                    strafeLeft(speed, strafeTarget, 3);
+                    //   }
                 }
             }
             sleep(50);
@@ -302,9 +315,9 @@ public class Commands extends HardwareMapping {
     }
 
     private double getAngle() {
-        if (isRoboHawks){
+        if (isRoboHawks) {
             return imuRoboHawks.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
-        }else {
+        } else {
             return imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
         }
     }
@@ -312,10 +325,9 @@ public class Commands extends HardwareMapping {
     private double getRemainingAngle(double targetAngle) {
         // calculate angle in -179 to +180 range  (
         Orientation angles;
-        if (isRoboHawks){
+        if (isRoboHawks) {
             angles = imuRoboHawks.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-        }
-        else{
+        } else {
             angles = imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
         }
         return targetAngle - angles.firstAngle;
@@ -349,19 +361,51 @@ public class Commands extends HardwareMapping {
         droneServo.setPosition(0);
     }
 
-    public void moveLinearActuator(double linearActuatorPower) {
-        if (linearActuatorPower > 0 && !limitSwitchOut.isPressed()) {
-            linearActuatorMotor.setPower(linearActuatorPower);
-        } else if (linearActuatorPower < 0 && !limitSwitchIn.isPressed()) {
-            linearActuatorMotor.setPower(linearActuatorPower);
+    public void moveLinearActuator(double linearActuatorPower, Telemetry telemetry, boolean override) {
+        int MIN_LINEAR = 0;
+        int MAX_LINEAR = 12500;
+        int JUMP_LINEAR = 500;
+
+        int currentPosition = linearActuatorMotor.getCurrentPosition();
+        int targetPostion = linearActuatorMotor.getCurrentPosition();
+
+        if (linearActuatorPower > 0 && (currentPosition < MAX_LINEAR || override)) {
+            targetPostion += JUMP_LINEAR;
+            if (targetPostion > MAX_LINEAR && !override)
+                targetPostion = MAX_LINEAR;
+
+            linearActuatorMotor.setPower(1);
+            linearActuatorMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            linearActuatorMotor.setTargetPosition(targetPostion);
+        } else if (linearActuatorPower < 0 && (currentPosition > MIN_LINEAR || override)) {
+            targetPostion -= JUMP_LINEAR;
+            if (targetPostion < MIN_LINEAR && !override)
+                targetPostion = MIN_LINEAR;
+
+            linearActuatorMotor.setPower(1);
+            linearActuatorMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            linearActuatorMotor.setTargetPosition(targetPostion);
         } else {
             linearActuatorMotor.setPower(0);
         }
+        currentPosition = linearActuatorMotor.getCurrentPosition();
+        telemetry.addData("current pos", currentPosition);
+        telemetry.addData("target", targetPostion);
+        telemetry.update();
+
+//        if (linearActuatorPower > 0 && !limitSwitchOut.isPressed()) {
+//            linearActuatorMotor.setPower(linearActuatorPower);
+//        } else if (linearActuatorPower < 0 && !limitSwitchIn.isPressed()) {
+//            linearActuatorMotor.setPower(linearActuatorPower);
+//        } else {
+//            linearActuatorMotor.setPower(0);
+//        }
     }
 
     public void printRobotStatus(Telemetry telemetry) {
         telemetry.addData("hasArmMotors: ", hasArmMotors);
         telemetry.addData("hasCamera: ", hasCamera);
+        telemetry.addData("hasColorSensor: ", hasColorSensor);
         telemetry.addData("hasDriveMotors: ", hasDriveMotors);
         telemetry.addData("hasDroneServo: ", hasDroneServo);
         telemetry.addData("hasGrabberDistance: ", hasGrabberDistance);
@@ -370,6 +414,7 @@ public class Commands extends HardwareMapping {
         telemetry.addData("hasLinearActuatorMotor: ", hasLinearActuatorMotor);
         telemetry.addData("hasPixelServo: ", hasPixelServo);
         telemetry.addData("hasWristServo: ", hasWristServo);
+        telemetry.addData("isRoboHawks", isRoboHawks);
     }
 
     public void quickSpin(double power, double heading, double timeout) {
@@ -391,9 +436,11 @@ public class Commands extends HardwareMapping {
             }
         }
     }
-    public void retractLinearActuator() {
-        moveLinearActuator(-1);
-    }
+
+//    public void retractLinearActuator() {
+//        moveLinearActuator(-1, );
+//    }
+
     public boolean reverseDriveMotorDirection() {
         leftFrontMotor.setDirection(leftFrontMotor.getDirection().inverted());
         leftBackMotor.setDirection(leftBackMotor.getDirection().inverted());
@@ -460,24 +507,27 @@ public class Commands extends HardwareMapping {
     public void setArmPositionRH(CenterStageEnums.ArmDirection armDirection, Telemetry telemetry) throws InterruptedException {
         if (!hasArmMotors)
             return;
+        int MAX_HEIGHT = 95;
+        int step = 50;
+        double power = 1;
 
-        int step = 40;
-        double power = .5;
-
-        telemetry.addData("position", armPositionTarget);
-        telemetry.addData("armMotorRight", armMotorRight.getCurrentPosition());
-        telemetry.addData("armMotorLeft", armMotorLeft.getCurrentPosition());
-        telemetry.update();
-
-        if (armDirection == CenterStageEnums.ArmDirection.Up){
+        if (armDirection == CenterStageEnums.ArmDirection.Up) {
             armPositionTarget = armPositionTarget + step;
-        }
-        else if (armDirection == CenterStageEnums.ArmDirection.Down){
-            armPositionTarget = 10;
+            if (armPositionTarget > MAX_HEIGHT)
+                armPositionTarget = MAX_HEIGHT;
+        } else if (armDirection == CenterStageEnums.ArmDirection.Down) {
+            armPositionTarget = armPositionTarget - step;
             setArmPosition(armPositionTarget);
-            sleep(2000);
             // Stop all motion;
-            armPositionTarget = 0;
+            if (armPositionTarget <= 0) {
+                armPositionTarget = 0;
+                power = -1;
+                setArmPosition(armPositionTarget);
+                setArmPower(power);
+                sleep(500);
+                power = 0;
+            }
+
         }
         setArmPosition(armPositionTarget);
         sleep(250);
@@ -496,16 +546,15 @@ public class Commands extends HardwareMapping {
             return;
 
         runtime.reset();
-        int target = 175;
-        double power = .07;
+        int target = 200;
+        double power = .15;
         if (armDirection == CenterStageEnums.ArmDirection.Up) {
-            if (hasWristServo){
+            if (hasWristServo) {
                 setWristPosition(CenterStageEnums.Position.Up);
             }
-            target = 235;
         }
         if (armDirection == CenterStageEnums.ArmDirection.Down) {
-            if (hasWristServo){
+            if (hasWristServo) {
                 setWristPosition(CenterStageEnums.Position.Up);
             }
         }
@@ -515,7 +564,7 @@ public class Commands extends HardwareMapping {
         armMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         armMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         armMotorRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-       armMotorLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        armMotorLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         armMotorRight.setPower(power);
         armMotorLeft.setPower(power);
 
@@ -542,16 +591,17 @@ public class Commands extends HardwareMapping {
         setArmPower(0);
 
 
-        if (armDirection == CenterStageEnums.ArmDirection.Up && hasWristServo){
+        if (armDirection == CenterStageEnums.ArmDirection.Up && hasWristServo) {
             setWristPositionBackdrop();
         }
     }
 
-    public void setArmPower(double power){
+    public void setArmPower(double power) {
         armMotorRight.setPower(power);
         armMotorLeft.setPower(power);
     }
-    public void setArmPosition(int position){
+
+    public void setArmPosition(int position) {
         armMotorRight.setTargetPosition(position);
         armMotorLeft.setTargetPosition(position);
     }
