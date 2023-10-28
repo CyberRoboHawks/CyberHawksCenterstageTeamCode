@@ -409,7 +409,7 @@ public class Commands extends HardwareMapping {
         if (distanceCm > 10) { //Move down
             wristServo.setPosition(.13);
         } else { //move up
-            wristServo.setPosition(0.75);
+            wristServo.setPosition(0.7);
         }
         sleep(250);
     }
@@ -418,7 +418,7 @@ public class Commands extends HardwareMapping {
         if (position == CenterStageEnums.Position.Down) {
             wristServo.setPosition(.13);
         } else if (position == CenterStageEnums.Position.Up) {
-            wristServo.setPosition(0.75);
+            wristServo.setPosition(0.7);
         }
         sleep(250);
     }

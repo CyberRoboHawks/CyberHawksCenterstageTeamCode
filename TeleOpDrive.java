@@ -21,8 +21,8 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 @TeleOp(name = "TeleOpDrive", group = "TeleOp") // add this code
 //@Disabled
 public class TeleOpDrive extends LinearOpMode {
-    static final double STANDARD_DRIVE_SPEED = .3;
-    static final double TURBO_DRIVE_SPEED = .6;
+    static final double STANDARD_DRIVE_SPEED = .4;
+    static final double TURBO_DRIVE_SPEED = .8;
 
     private final ElapsedTime gametime = new ElapsedTime();
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
@@ -91,18 +91,11 @@ public class TeleOpDrive extends LinearOpMode {
         while (opModeIsActive()) {
             telemetry.addData("Status", "Game Time: " + gametime);
 
-            if (!isStopRequested() && robot.hasCamera && !gamepad1.a) {
-                int targetId = 5;
-                commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Rotate, targetId, telemetry);
-                commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Strafe, targetId, telemetry);
-                commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Straight, targetId, telemetry);
-            }
-
             double drivePower = STANDARD_DRIVE_SPEED;  //1 is 100%, .5 is 50%
 
             //Driver controller ---------------------
             if (gamepad1 != null) {
-                if (gamepad1.left_bumper && gamepad1.right_bumper) {
+                if (gamepad1.dpad_up && gamepad1.a) {
                     isReverse = commands.reverseDriveMotorDirection();
                     sleep(250);
                 }
@@ -113,7 +106,7 @@ public class TeleOpDrive extends LinearOpMode {
                 }
 
                 // Turbo driving
-                if (gamepad1.left_bumper) {
+                if (gamepad1.left_bumper || gamepad1.right_bumper) {
                     drivePower = TURBO_DRIVE_SPEED;  // change drive speed to the turbo speed variable
                 }
 
@@ -172,16 +165,17 @@ public class TeleOpDrive extends LinearOpMode {
 
                 if (gamepad2.a && robot.hasGrabberServo) {
                     if (isGrabberOpen) {
-                        commands.setGrabberPosition(0.4);
+                        commands.setGrabberPosition(0.35);
                     } else {
-                        commands.setGrabberPosition(0.6);
+                        commands.setGrabberPosition(.8);
                     }
                     isGrabberOpen = !isGrabberOpen;
                     sleep(250);
                 }
 
                 // prevent early launch with gameTimer check for endgame
-                if (gamepad2.y && robot.hasDroneServo){
+                // switch back to gamepad2 later
+                if (gamepad1.y && robot.hasDroneServo){
                         //&& ((gamepad2.y && gametime.seconds() > 90){
                     commands.launchDrone();
                 }

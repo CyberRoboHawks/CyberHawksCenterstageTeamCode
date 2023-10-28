@@ -10,7 +10,6 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.hardware.configuration.WebcamConfiguration;
-import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
@@ -89,25 +88,19 @@ public class HardwareMapping {
             hasDroneServo = true;
         }
         if (canGetDevice("grabberServo")) {
-            grabberServo = setupServo("grabberServo", .4);
+            grabberServo = setupServo("grabberServo", 1);
             hasGrabberServo = true;
             isRoboHawks = false;
         }
         if (canGetDevice("pixelServo")) {
             pixelServo = setupServo("pixelServo", 0.2);
-            // pixelServo.setDirection(DcMotorSimple.Direction.FORWARD);
             hasPixelServo = true;
         }
 
         if (canGetDevice("wristServo")) {
-            wristServo = setupServo("wristServo", 0.75);
+            wristServo = setupServo("wristServo", 0.7);
             hasWristServo = true;
         }
-//        if (canGetDevice("wristServo")) {
-//            wristServo = setupCRServo("wristServo", 0.00);
-//            wristServo.setDirection(DcMotorSimple.Direction.FORWARD);
-//            hasWristServo = true;
-//        }
 
         if (canGetDevice("grabberDistance")) {
             grabberDistance = hardwareMap.get(DistanceSensor.class, "grabberDistance");
