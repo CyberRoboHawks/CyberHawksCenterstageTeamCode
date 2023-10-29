@@ -4,6 +4,8 @@ import static java.lang.Math.abs;
 
 import android.util.Size;
 
+import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
+import com.qualcomm.hardware.rev.RevBlinkinLedDriver.BlinkinPattern;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -14,6 +16,7 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
@@ -26,7 +29,7 @@ public class TeleOpDrive extends LinearOpMode {
 
     private final ElapsedTime gametime = new ElapsedTime();
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
-    Commands commands = new Commands();
+    Commands commands = new Commands(telemetry);
 
     AprilTagProcessor tagProcessor = null;
 
@@ -63,20 +66,20 @@ public class TeleOpDrive extends LinearOpMode {
         double offsetHeading = 0;
         boolean isReverse = false;
         boolean isGrabberOpen = false;
-        boolean isWristUp = true;
+        //boolean isWristUp = true;
         //CenterStageEnums.Position grabberPosition = CenterStageEnums.Position.Up;
 
-        if (robot.hasCamera) {
-            tagProcessor = new AprilTagProcessor.Builder()
-                    .setDrawCubeProjection(true)
-                    .setDrawTagID(true)
-                    .build();
-            VisionPortal visionPortal = new VisionPortal.Builder()
-                    .addProcessor(tagProcessor)
-                    .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
-                    .setCameraResolution(new Size(1920, 1080))
-                    .build();
-        }
+//        if (robot.hasCamera) {
+//            tagProcessor = new AprilTagProcessor.Builder()
+//                    .setDrawCubeProjection(true)
+//                    .setDrawTagID(true)
+//                    .build();
+//            VisionPortal visionPortal = new VisionPortal.Builder()
+//                    .addProcessor(tagProcessor)
+//                    .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+//                    .setCameraResolution(new Size(1920, 1080))
+//                    .build();
+//        }
         telemetry.addData("Status:", "Ready");
         commands.printRobotStatus(telemetry);
         telemetry.update();
@@ -89,7 +92,19 @@ public class TeleOpDrive extends LinearOpMode {
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
-            //telemetry.addData("Status", "Game Time: " + gametime);
+            if (robot.hasBlinkin){
+                if (robot.armPosition == CenterStageEnums.Position.Up
+                        && robot.hasGrabberDistance
+                        && robot.grabberDistance.getDistance(DistanceUnit.CM) <= 6) {
+                    robot.blinkinLedDriver.setPattern(BlinkinPattern.GREEN);
+                }
+                else if (gametime.seconds() >= 90){
+                    robot.blinkinLedDriver.setPattern(BlinkinPattern.HEARTBEAT_RED);
+                }
+                else{
+                    robot.blinkinLedDriver.setPattern(BlinkinPattern.RAINBOW_OCEAN_PALETTE);
+                }
+            }
 
             double drivePower = STANDARD_DRIVE_SPEED;  //1 is 100%, .5 is 50%
 
@@ -110,10 +125,10 @@ public class TeleOpDrive extends LinearOpMode {
                     drivePower = TURBO_DRIVE_SPEED;  // change drive speed to the turbo speed variable
                 }
 
-                // test - will only be auton action
-                if (gamepad1.a && robot.hasPixelServo) {
-                    commands.deliverGroundPixel();
-                }
+//                // test - will only be auton action
+//                if (gamepad1.a && robot.hasPixelServo) {
+//                    commands.deliverGroundPixel();
+//                }
 
                 // test
 //                if (gamepad1.dpad_up && robot.hasArmMotors && robot.isRoboHawks) {
@@ -125,17 +140,17 @@ public class TeleOpDrive extends LinearOpMode {
 //                    sleep(250);
 //                    commands.setArmPower(0);
 //                }
-                if (robot.armPositionTarget != robot.armMotorRight.getCurrentPosition()){
-                    telemetry.addData("current arm pos", robot.armMotorRight.getCurrentPosition());
-                    telemetry.addData("current arm target",robot.armPositionTarget);
-                    telemetry.update();
-                    //commands.setArmPosition(robot.armPositionTarget);
-                }
-
-                // test - will only be auton action
-                if (gamepad1.x && robot.hasWristServo) {
-                    commands.setWristPositionBackdrop();
-                }
+//                if (robot.armPositionTarget != robot.armMotorRight.getCurrentPosition()){
+//                    telemetry.addData("current arm pos", robot.armMotorRight.getCurrentPosition());
+//                    telemetry.addData("current arm target",robot.armPositionTarget);
+//                    telemetry.update();
+//                    //commands.setArmPosition(robot.armPositionTarget);
+//                }
+//
+//                // test - will only be auton action
+//                if (gamepad1.x && robot.hasWristServo) {
+//                    commands.setWristPositionBackdrop();
+//                }
                 // mecanum driving
                 strafePower = gamepad1.left_stick_x;
                 forwardPower = -gamepad1.left_stick_y;
@@ -152,22 +167,22 @@ public class TeleOpDrive extends LinearOpMode {
                 if (commands.hasGripperSlideServo) {
                     if (gamepad2.dpad_left) {
                         robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.FORWARD);
-                        robot.gripperSlideServo.setPower(1);
+                        robot.gripperSlideServo.setPower(.5);
                         sleep(100);
                     } else if (gamepad2.dpad_right) {
                         robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
-                        robot.gripperSlideServo.setPower(1);
+                        robot.gripperSlideServo.setPower(.5);
                         sleep(100);
                     }
-                    robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
+
                     robot.gripperSlideServo.setPower(0);
                 }
 
                 if (gamepad2.a && robot.hasGrabberServo) {
                     if (isGrabberOpen) {
-                        commands.setGrabberPosition(0.33);
+                        commands.setGrabberPosition(robot.GRABBER_CLOSED);
                     } else {
-                        commands.setGrabberPosition(.8);
+                        commands.setGrabberPosition(robot.GRABBER_OPEN);
                     }
                     isGrabberOpen = !isGrabberOpen;
                     sleep(250);
@@ -184,34 +199,36 @@ public class TeleOpDrive extends LinearOpMode {
                     commands.reverseWristPosition();
                 }
 
-                 armPower = -gamepad2.left_stick_y;
+                armPower = -gamepad2.left_stick_y;
                 if (armPower !=0){
                     if (armPower > 0){
                         if (robot.isRoboHawks){
-                            commands.setArmPositionRH(CenterStageEnums.ArmDirection.Up,  telemetry);
+                            commands.setArmPositionRH(CenterStageEnums.ArmDirection.Up);
                         }else
                         {
-                            commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3, telemetry);
+                            commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
                         }
                         robot.armPosition= CenterStageEnums.Position.Up;
                     }
                     else{
                         if (robot.isRoboHawks){
-                            commands.setArmPositionRH(CenterStageEnums.ArmDirection.Down,  telemetry);
+                            commands.setArmPositionRH(CenterStageEnums.ArmDirection.Down);
                         }else{
                             commands.setWristPosition(CenterStageEnums.Position.Up);
-                            commands.setArmPosition(CenterStageEnums.ArmDirection.Down, 3, telemetry);
+                            commands.setArmPosition(CenterStageEnums.ArmDirection.Down, 3);
+                            commands.setGrabberPosition(robot.GRABBER_OPEN);
                         }
-                        robot.armPosition= CenterStageEnums.Position.Down;
+                        robot.armPosition = CenterStageEnums.Position.Down;
                     }
                 }
 
                 if ( robot.hasLinearActuatorMotor ){
                     if (gamepad2.right_stick_y !=0){
-                        commands.moveLinearActuator(-gamepad2.right_stick_y, telemetry, false);
+                        commands.moveLinearActuator(-gamepad2.right_stick_y,false);
                     }
+                    // Allow override of linear actuator limits
                     if (gamepad2.right_stick_y !=0 && gamepad2.left_bumper){
-                        commands.moveLinearActuator(-gamepad2.right_stick_y, telemetry, true);
+                        commands.moveLinearActuator(-gamepad2.right_stick_y,true);
                     }
                 }
             }

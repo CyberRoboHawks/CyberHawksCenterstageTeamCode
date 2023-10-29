@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -12,11 +13,13 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.hardware.configuration.WebcamConfiguration;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
 public class HardwareMapping {
     //region robot "has" properties
     public boolean hasArmMotors = false;
+    public boolean hasBlinkin = false;
     public boolean hasCamera = false;
     public boolean hasColorSensor = false;
     public boolean hasDriveMotors = false;
@@ -51,6 +54,12 @@ public class HardwareMapping {
     public BNO055IMU imuRoboHawks = null;
     public int armPositionTarget = 0;
 
+    public RevBlinkinLedDriver blinkinLedDriver;
+    public RevBlinkinLedDriver.BlinkinPattern pattern;
+
+    public double GRABBER_CLOSED = .8;
+    public double GRABBER_OPEN = .33;
+
     CenterStageEnums.Position armPosition = CenterStageEnums.Position.Down;
     HardwareMap hardwareMap = null;
 
@@ -58,6 +67,11 @@ public class HardwareMapping {
     public void init(HardwareMap hardware) {
         // Save reference to Hardware map
         hardwareMap = hardware;
+
+        if (canGetDevice("blinkin")){
+            blinkinLedDriver = hardwareMap.get(RevBlinkinLedDriver.class, "blinkin");
+            hasBlinkin = true;
+        }
 
         if (canGetDevice("armMotorRight"))
             armMotorRight = setupMotor("armMotorRight", DcMotor.Direction.FORWARD, 0, true, true);
@@ -96,7 +110,7 @@ public class HardwareMapping {
             hasDroneServo = true;
         }
         if (canGetDevice("grabberServo")) {
-            grabberServo = setupServo("grabberServo", 1);
+            grabberServo = setupServo("grabberServo", GRABBER_CLOSED);
             hasGrabberServo = true;
             isRoboHawks = false;
         }
