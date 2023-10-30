@@ -61,7 +61,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.addData("Color: ",color);
 
         // Identify pixel/team element placement
-        TapeLocation tapeLocation = TapeLocation.Left;
+        TapeLocation tapeLocation = TapeLocation.Right;
 
         telemetry.addData("Tape location: ",tapeLocation);
         AprilTag aprilTag = GetTagID(color, tapeLocation);
@@ -70,45 +70,53 @@ public abstract class AutonomousBase extends LinearOpMode {
 
         // Orient to tape line
         commands.driveForward(DRIVE_SPEED, 26, 3);
-        if (tapeLocation == TapeLocation.Left) {
-            commands.spinLeft(ROTATE_SPEED, 90, 3);
-            commands.strafeRight(DRIVE_SPEED,8,3);
-            telemetry.addData("Tape location - spin left 90",tapeLocation);
-        }
-        if (tapeLocation == TapeLocation.Right) {
-            commands.spinRight(ROTATE_SPEED, -90, 3);
-            telemetry.addData("Tape location - spin right 90",tapeLocation);
+
+        if (color == TapeColor.Red){
+            if (tapeLocation == TapeLocation.Left) {
+                commands.strafeLeft(.3, 6, 2);
+            }
+            if (tapeLocation == TapeLocation.Right) {
+                commands.spinRight(ROTATE_SPEED, -90, 3);
+                telemetry.addData("Tape location - spin right 90",tapeLocation);
+            }
         }
 
-        // Find tape line
-        commands.ApproachTape(color, 3);
+        boolean isStrafe = (color == TapeColor.Red && tapeLocation == TapeLocation.Left);
+         // Find tape line
+        commands.ApproachTape(color, isStrafe, 3);
         telemetry.addData("Approach tape: ",color);
         telemetry.update();
 
         // Orient for pixel placement
-        commands.driveBackwards(DRIVE_SPEED_FAST, 3, 3);
+        if (color == TapeColor.Red && tapeLocation != TapeLocation.Left)
+            commands.driveBackwards(DRIVE_SPEED_FAST, 3, 3);
+        else if (color == TapeColor.Red && tapeLocation == TapeLocation.Left)
+            commands.driveBackwards(DRIVE_SPEED_FAST, 2, 3);
 
         // Deliver ground pixel
         commands.deliverGroundPixel();
+
+
         sleep(250);
         if (tapeLocation == TapeLocation.Center){
             commands.driveBackwards(DRIVE_SPEED_FAST, 4, 3);
         }
-        if (tapeLocation == TapeLocation.Left && color == TapeColor.Red){
-            commands.driveBackwards(DRIVE_SPEED_FAST, 6, 3);
-            commands.strafeLeft(DRIVE_SPEED_FAST,8,3);
+        if (color == TapeColor.Red && tapeLocation == TapeLocation.Left ){
+            commands.strafeRight(DRIVE_SPEED_FAST,9,3);
         }
 
         // Orient towards backdrop red/blue
         if (color == TapeColor.Red && tapeLocation == TapeLocation.Center ||
         color == TapeColor.Red && tapeLocation == TapeLocation.Left) {
             commands.spinRight(ROTATE_SPEED, -90, 5);
+            commands.strafeLeft(ROTATE_SPEED, 2, 2);
             telemetry.addData("Red - spin right 90","");
         } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Center){
             commands.spinLeft(ROTATE_SPEED, 90, 5);
             telemetry.addData("Blue - spin left 90","");
         }
         telemetry.update();
+sleep(30000);
 
         if (tapeLocation == TapeLocation.Center){
             // Center red reorientation

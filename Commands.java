@@ -31,9 +31,11 @@ public class Commands extends HardwareMapping {
     float[] hsvValues = {0F, 0F, 0F};
 
     Telemetry telemetry;
-    public Commands(Telemetry telemetryIn){
+
+    public Commands(Telemetry telemetryIn) {
         telemetry = telemetryIn;
     }
+
     public void approachBackdrop(double distanceTarget, double timeout) throws InterruptedException {
         double distanceCm = grabberDistance.getDistance(DistanceUnit.CM);
         ElapsedTime approachRuntime = new ElapsedTime();
@@ -47,7 +49,7 @@ public class Commands extends HardwareMapping {
         }
     }
 
-    public void ApproachTape(CenterStageEnums.TapeColor color, double timeout) throws InterruptedException {
+    public void ApproachTape(CenterStageEnums.TapeColor color, boolean isStrafe, double timeout) throws InterruptedException {
         ElapsedTime approachRuntime = new ElapsedTime();
         approachRuntime.reset();
 
@@ -56,7 +58,10 @@ public class Commands extends HardwareMapping {
             if (getTapeColor(hsvValues) == color) {
                 break;
             }
-            driveForward(.2, 1, 3);
+            if (!isStrafe)
+                driveForward(.2, 1, 3);
+            else
+                strafeLeft(.2, 1, 1);
         }
     }
 
@@ -71,12 +76,12 @@ public class Commands extends HardwareMapping {
     }
 
     public void driveBackwards(double power, double distanceInInches, double timeout) throws InterruptedException {
-        if (isReverse) distanceInInches = distanceInInches *-1;
+        if (isReverse) distanceInInches = distanceInInches * -1;
         encoderDriveStraight(power, -distanceInInches, timeout);
     }
 
     public void driveForward(double power, double distanceInInches, double timeout) throws InterruptedException {
-        if (isReverse) distanceInInches = distanceInInches *-1;
+        if (isReverse) distanceInInches = distanceInInches * -1;
         encoderDriveStraight(power, distanceInInches, timeout);
     }
 
@@ -454,20 +459,6 @@ public class Commands extends HardwareMapping {
         sleep(250);
     }
 
-    public void setWristPosition(CenterStageEnums.Position position) throws InterruptedException {
-        if (position == CenterStageEnums.Position.Down) {
-            wristServo.setPosition(.13);
-        } else if (position == CenterStageEnums.Position.Up) {
-            wristServo.setPosition(0.7);
-        }
-        sleep(250);
-    }
-
-    public void setWristPositionBackdrop() throws InterruptedException {
-        wristServo.setPosition(0.59);
-        sleep(250);
-    }
-
     public void setGrabberPosition(double position) {
         grabberServo.setPosition(position);
     }
@@ -542,40 +533,39 @@ public class Commands extends HardwareMapping {
         int target = 220;
         double power = .10;
         if (hasWristServo) {
-            setWristPosition(CenterStageEnums.Position.Up);
+            wristServo.setPosition(WRIST_UP);
         }
-        setArmPosition(target);
 
+        setArmPosition(target);
         armMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         armMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        armMotorRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        armMotorLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+//                armMotorRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+//                armMotorLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         setArmPower(power);
 
         while ((runtime.seconds() < timeout) &&
                 (armMotorRight.isBusy() && armMotorLeft.isBusy())) {
 
-            // Display it for the driver.
-            telemetry.addData("Running to", " %7d", target);
-            telemetry.addData("Currently at", " at %7d :%7d",
-                    armMotorRight.getCurrentPosition(), armMotorLeft.getCurrentPosition());
-            telemetry.update();
+//                // Display it for the driver.
+//                telemetry.addData("Running to", " %7d", target);
+//                telemetry.addData("Currently at", " at %7d :%7d",
+//                        armMotorRight.getCurrentPosition(), armMotorLeft.getCurrentPosition());
+//                telemetry.update();
         }
-
         if (armDirection == CenterStageEnums.ArmDirection.Up) setArmPower(-.25);
         if (armDirection == CenterStageEnums.ArmDirection.Down) setArmPower(.5);
+
         sleep(250);
 
         // Stop all motion;
         setArmPower(0);
 
         if (armDirection == CenterStageEnums.ArmDirection.Up && hasWristServo) {
-            setWristPositionBackdrop();
+            wristServo.setPosition(WRIST_BACKDROP);
         }
-        if (armDirection == CenterStageEnums.ArmDirection.Down && hasWristServo) {
-
-        }
-
+//                if (armDirection == CenterStageEnums.ArmDirection.Down && hasWristServo) {
+//
+//                }
     }
 
     public void setArmPower(double power) {
