@@ -54,7 +54,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.update();
     }
 
-    protected void executeOperations(TapeColor color) throws InterruptedException {
+    protected void executeOperations(TapeColor color, CenterStageEnums.StrafeDirection parkingDirection) throws InterruptedException {
         if (robot.hasBlinkin) {
             robot.blinkinLedDriver.setPattern(RevBlinkinLedDriver.BlinkinPattern.SINELON_LAVA_PALETTE);
         }
@@ -160,8 +160,12 @@ public abstract class AutonomousBase extends LinearOpMode {
         }
 
         // Park
-        commands.strafeLeft(DRIVE_SPEED_FAST, GetStrafeDistance(Left, aprilTag), 5);
-        commands.driveForward(DRIVE_SPEED_FAST, 10, 2);
+        if (parkingDirection == Left)
+            commands.strafeLeft(DRIVE_SPEED_FAST, GetStrafeDistance(parkingDirection, aprilTag), 5);
+        if (parkingDirection == Right)
+            commands.strafeRight(DRIVE_SPEED_FAST, GetStrafeDistance(parkingDirection, aprilTag), 5);
+        
+        commands.driveForward(DRIVE_SPEED_FAST, 8, 2);
     }
 
     private boolean GetCloserToAprilTags(TapeColor color, int distance) {
