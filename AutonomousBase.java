@@ -14,7 +14,10 @@ import org.firstinspires.ftc.teamcode.CenterStageEnums.AprilTag;
 import org.firstinspires.ftc.teamcode.CenterStageEnums.TapeColor;
 import org.firstinspires.ftc.teamcode.CenterStageEnums.TapeLocation;
 import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
+import java.util.ArrayList;
 
 public abstract class AutonomousBase extends LinearOpMode {
     static final float DRIVE_SPEED = 0.3f;
@@ -48,87 +51,85 @@ public abstract class AutonomousBase extends LinearOpMode {
         startingAngle = commands.getAngle();
         telemetry.addData("angle", startingAngle);
 //        commands.printRobotStatus(telemetry);
-       telemetry.update();
+        telemetry.update();
     }
 
     protected void executeOperations(TapeColor color) throws InterruptedException {
-        if (robot.hasBlinkin){
+        if (robot.hasBlinkin) {
             robot.blinkinLedDriver.setPattern(RevBlinkinLedDriver.BlinkinPattern.SINELON_LAVA_PALETTE);
         }
 
         runtime.reset();
         telemetry.setAutoClear(false);
-        telemetry.addData("Color: ",color);
+        telemetry.addData("Color: ", color);
 
         // Identify pixel/team element placement
         TapeLocation tapeLocation = TapeLocation.Right;
 
-        telemetry.addData("Tape location: ",tapeLocation);
+        telemetry.addData("Tape location: ", tapeLocation);
         AprilTag aprilTag = GetTagID(color, tapeLocation);
-        telemetry.addData("April tag: ",aprilTag);
+        telemetry.addData("April tag: ", aprilTag);
         telemetry.update();
 
-        // Orient to tape line
+        // Move off the start
         commands.driveForward(DRIVE_SPEED, 26, 3);
 
-        if (color == TapeColor.Red){
-            if (tapeLocation == TapeLocation.Left) {
-                commands.strafeLeft(.3, 6, 2);
-            }
-            if (tapeLocation == TapeLocation.Right) {
-                commands.spinRight(ROTATE_SPEED, -90, 3);
-                telemetry.addData("Tape location - spin right 90",tapeLocation);
-            }
-        }
+        // Turn to tape line
+        TurnTowardsSpikeMark(color, tapeLocation);
 
-        boolean isStrafe = (color == TapeColor.Red && tapeLocation == TapeLocation.Left);
-         // Find tape line
+        // Find tape line
+        boolean isStrafe = (tapeLocation == TapeLocation.Left);
         commands.ApproachTape(color, isStrafe, 3);
-        telemetry.addData("Approach tape: ",color);
-        telemetry.update();
 
         // Orient for pixel placement
-        if (color == TapeColor.Red && tapeLocation != TapeLocation.Left)
+        if (tapeLocation != TapeLocation.Left)
             commands.driveBackwards(DRIVE_SPEED_FAST, 3, 3);
-        else if (color == TapeColor.Red && tapeLocation == TapeLocation.Left)
+        else if (tapeLocation == TapeLocation.Left)
             commands.driveBackwards(DRIVE_SPEED_FAST, 2, 3);
 
         // Deliver ground pixel
-        commands.deliverGroundPixel();
-
+        commands.deliverSpikeMarkPixel();
 
         sleep(250);
-        if (tapeLocation == TapeLocation.Center){
+        if (tapeLocation == TapeLocation.Center) {
             commands.driveBackwards(DRIVE_SPEED_FAST, 4, 3);
         }
-        if (color == TapeColor.Red && tapeLocation == TapeLocation.Left ){
-            commands.strafeRight(DRIVE_SPEED_FAST,9,3);
+        if (tapeLocation == TapeLocation.Left) {
+            commands.strafeRight(DRIVE_SPEED_FAST, 9, 3);
         }
 
         // Orient towards backdrop red/blue
         if (color == TapeColor.Red && tapeLocation == TapeLocation.Center ||
-        color == TapeColor.Red && tapeLocation == TapeLocation.Left) {
+                color == TapeColor.Red && tapeLocation == TapeLocation.Left) {
             commands.spinRight(ROTATE_SPEED, -90, 5);
-            commands.strafeLeft(ROTATE_SPEED, 2, 2);
-            telemetry.addData("Red - spin right 90","");
-        } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Center){
+            commands.strafeLeft(DRIVE_SPEED_FAST, 2, 2);
+        } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Center) {
             commands.spinLeft(ROTATE_SPEED, 90, 5);
-            telemetry.addData("Blue - spin left 90","");
+            commands.strafeRight(DRIVE_SPEED_FAST, 2, 2);
+        } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Right) {
+            commands.driveBackwards(DRIVE_SPEED_FAST, 5, 3);
+            commands.spinLeft(ROTATE_SPEED, 90, 5);
+        } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Left) {
+            commands.spinLeft(ROTATE_SPEED, 90, 5);
         }
         telemetry.update();
-sleep(30000);
 
-        if (tapeLocation == TapeLocation.Center){
-            // Center red reorientation
-            commands.driveForward(DRIVE_SPEED_FAST, 6, 3);
-            commands.strafeLeft(DRIVE_SPEED_FAST, 3, 2);
+    //        if (tapeLocation == TapeLocation.Center) {
+    //            // Center red reorientation
+    //            commands.driveForward(DRIVE_SPEED_FAST, 6, 3);
+    //            commands.strafeLeft(DRIVE_SPEED_FAST, 3, 2);
+    //        }
+
+        runtime.reset();
+        boolean tagsFound = false;
+        while (!isStopRequested() && robot.hasCamera && runtime.seconds() < 3 && !tagsFound) {
+            tagsFound = GetCloserToAprilTags(color, 6);
+            sleep(250);
         }
-
 
         runtime.reset();
         // Drive towards backdrop find April tag
         while (!isStopRequested() && robot.hasCamera && runtime.seconds() < 6) {
-            int targetId = 4;
             commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Rotate, aprilTag.getValue());
             commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Strafe, aprilTag.getValue());
             commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Straight, aprilTag.getValue());
@@ -149,7 +150,7 @@ sleep(30000);
         if (!robot.isRoboHawks) {
             commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
             sleep(250);
-            commands.approachBackdrop(4, 10);
+            commands.approachBackdrop(6, 10);
             sleep(250);
             commands.setGrabberPosition(robot.GRABBER_OPEN);
             sleep(250);
@@ -163,15 +164,53 @@ sleep(30000);
         commands.driveForward(DRIVE_SPEED_FAST, 10, 2);
     }
 
-    private int GetStrafeDistance(CenterStageEnums.StrafeDirection direction, AprilTag aprilTag){
-        int distance = 30;
-        if (direction == Right && aprilTag == AprilTag.RedRight ||
-            direction == Left && aprilTag == AprilTag.RedLeft)
+    private boolean GetCloserToAprilTags(TapeColor color, int distance) throws InterruptedException {
+        ArrayList<AprilTagDetection> detections = tagProcessor.getFreshDetections();
+        boolean tagsFound = detections.size() > 0;
+        telemetry.addData("detections: ", detections.size());
+        telemetry.update();
+        if (!tagsFound)
+            commands.driveForward(DRIVE_SPEED_FAST, distance, 3);
+
+        if (color == TapeColor.Blue){
+            if (commands.getAngle() > 90) commands.spinRight(ROTATE_SPEED, 90, 2);
+            else if (commands.getAngle() < 90) commands.spinLeft(ROTATE_SPEED, 90, 2);
+        }
+        if (color == TapeColor.Red){
+            if (commands.getAngle() > -90) commands.spinRight(ROTATE_SPEED, -90, 2);
+            else if (commands.getAngle() < -90) commands.spinLeft(ROTATE_SPEED, -90, 2);
+        }
+        return  tagsFound;
+    }
+
+    private void TurnTowardsSpikeMark(TapeColor color, TapeLocation tapeLocation) {
+        if (color == TapeColor.Red) {
+            if (tapeLocation == TapeLocation.Left) {
+                commands.strafeLeft(.3, 6, 2);
+            }
+            if (tapeLocation == TapeLocation.Right) {
+                commands.spinRight(ROTATE_SPEED, -90, 3);
+            }
+        }
+        if (color == TapeColor.Blue) {
+            if (tapeLocation == TapeLocation.Left) {
+                commands.strafeLeft(.3, 6, 2);
+            }
+            if (tapeLocation == TapeLocation.Right) {
+                commands.spinRight(ROTATE_SPEED, -90, 3);
+            }
+        }
+    }
+
+    private int GetStrafeDistance(CenterStageEnums.StrafeDirection direction, AprilTag aprilTag) {
+        int distance = 26;
+        if ((direction == Right && (aprilTag == AprilTag.RedRight || aprilTag == AprilTag.BlueRight)) ||
+                (direction == Left && (aprilTag == AprilTag.RedLeft || aprilTag == AprilTag.BlueLeft)))
             distance = 18;
 
-        if (direction == Right && aprilTag == AprilTag.RedLeft ||
-            direction == Left && aprilTag == AprilTag.RedRight)
-            distance = 38;
+        if ((direction == Right && (aprilTag == AprilTag.RedLeft || aprilTag == AprilTag.BlueLeft)) ||
+            (direction == Left && (aprilTag == AprilTag.RedRight || aprilTag == AprilTag.BlueRight)))
+            distance = 32;
 
         return distance;
     }

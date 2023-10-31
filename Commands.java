@@ -65,7 +65,7 @@ public class Commands extends HardwareMapping {
         }
     }
 
-    public void deliverGroundPixel() throws InterruptedException {
+    public void deliverSpikeMarkPixel() throws InterruptedException {
         pixelServo.setPosition(.4);
         sleep(100);
         pixelServo.setPosition(.6);
@@ -230,7 +230,7 @@ public class Commands extends HardwareMapping {
 
     public void followTag(AprilTagProcessor tagProcessor, CenterStageEnums.FollowDirection direction, int targetId) throws InterruptedException {
         if (tagProcessor.getDetections().size() > 0) {
-            AprilTagProcessor myAprilTagProcessor;
+           // AprilTagProcessor myAprilTagProcessor;
             List<AprilTagDetection> myAprilTagDetections;  // list of all detections
             AprilTagDetection tag = null;
             myAprilTagDetections = tagProcessor.getDetections();
