@@ -164,7 +164,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         commands.driveForward(DRIVE_SPEED_FAST, 10, 2);
     }
 
-    private boolean GetCloserToAprilTags(TapeColor color, int distance) throws InterruptedException {
+    private boolean GetCloserToAprilTags(TapeColor color, int distance) {
         ArrayList<AprilTagDetection> detections = tagProcessor.getFreshDetections();
         boolean tagsFound = detections.size() > 0;
         telemetry.addData("detections: ", detections.size());

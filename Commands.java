@@ -75,12 +75,12 @@ public class Commands extends HardwareMapping {
         pixelServo.setPosition(.2);
     }
 
-    public void driveBackwards(double power, double distanceInInches, double timeout) throws InterruptedException {
+    public void driveBackwards(double power, double distanceInInches, double timeout) {
         if (isReverse) distanceInInches = distanceInInches * -1;
         encoderDriveStraight(power, -distanceInInches, timeout);
     }
 
-    public void driveForward(double power, double distanceInInches, double timeout) throws InterruptedException {
+    public void driveForward(double power, double distanceInInches, double timeout) {
         if (isReverse) distanceInInches = distanceInInches * -1;
         encoderDriveStraight(power, distanceInInches, timeout);
     }
@@ -182,7 +182,7 @@ public class Commands extends HardwareMapping {
         setMotorRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
-    private void encoderDriveStraight(double power, double distanceInches, double timeoutS) throws InterruptedException {
+    private void encoderDriveStraight(double power, double distanceInches, double timeoutS) {
         int newMotorPosition = (int) (distanceInches * COUNTS_PER_INCH);
         int leftBackTarget = leftBackMotor.getCurrentPosition() + newMotorPosition;
         int leftFrontTarget = leftFrontMotor.getCurrentPosition() + newMotorPosition;
