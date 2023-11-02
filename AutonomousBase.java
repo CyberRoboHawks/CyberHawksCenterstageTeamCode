@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import static org.firstinspires.ftc.teamcode.CenterStageEnums.StrafeDirection.Left;
 import static org.firstinspires.ftc.teamcode.CenterStageEnums.StrafeDirection.Right;
 
+import android.graphics.Canvas;
 import android.util.Size;
 
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
@@ -10,14 +11,19 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.robotcore.external.tfod.Recognition;
+import org.firstinspires.ftc.robotcore.internal.camera.calibration.CameraCalibration;
 import org.firstinspires.ftc.teamcode.CenterStageEnums.AprilTag;
 import org.firstinspires.ftc.teamcode.CenterStageEnums.TapeColor;
 import org.firstinspires.ftc.teamcode.CenterStageEnums.TapeLocation;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.vision.tfod.TfodProcessor;
+import org.opencv.core.Mat;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public abstract class AutonomousBase extends LinearOpMode {
     static final float DRIVE_SPEED = 0.3f;
@@ -26,9 +32,17 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final float ROTATE_SPEED = 0.3f;
 
     private final ElapsedTime runtime = new ElapsedTime();
+
+    private static final String TFOD_MODEL_ASSEST = "CyberHawks_1.tflite";
+    private static  final String[] LABELS = {
+        "Blue Prop",
+            "Red Prop"
+    };
     Commands commands = new Commands(telemetry);
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
     AprilTagProcessor tagProcessor = null;
+
+    TfodProcessor tfod = null;
     VisionPortal visionPortal = null;
     double startingAngle;
 
@@ -37,19 +51,29 @@ public abstract class AutonomousBase extends LinearOpMode {
         robot.init(hardwareMap);
 
         if (robot.hasCamera) {
+            tfod = new TfodProcessor.Builder()
+                    .setModelAssetName(TFOD_MODEL_ASSEST)
+                    .setModelLabels(LABELS)
+                    .build();
+
+            //tfod = TfodProcessor.easyCreateWithDefaults();
+            tfod.setMinResultConfidence(.7f);
             tagProcessor = new AprilTagProcessor.Builder()
                     .setDrawCubeProjection(true)
                     .setDrawTagID(true)
                     .build();
             visionPortal = new VisionPortal.Builder()
                     .addProcessor(tagProcessor)
+                    .addProcessor(tfod)
                     .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
                     .setCameraResolution(new Size(1920, 1080))
+                    //.setCameraResolution(new Size(1920, 1080))
                     .build();
         }
         telemetry.addData("Status:", "ready");
         startingAngle = commands.getAngle();
         telemetry.addData("angle", startingAngle);
+        getTfodRecognitions(tfod);
 //        commands.printRobotStatus(telemetry);
         telemetry.update();
     }
@@ -58,13 +82,24 @@ public abstract class AutonomousBase extends LinearOpMode {
         if (robot.hasBlinkin) {
             robot.blinkinLedDriver.setPattern(RevBlinkinLedDriver.BlinkinPattern.SINELON_LAVA_PALETTE);
         }
-
+sleep(3000);
         runtime.reset();
         telemetry.setAutoClear(false);
         telemetry.addData("Color: ", color);
 
+        TapeLocation tapeLocation = TapeLocation.None;
         // Identify pixel/team element placement
-        TapeLocation tapeLocation = TapeLocation.Right;
+        for (int i = 0; i < 4; i++) {
+            tapeLocation = getTfodRecognitions(tfod);
+            if (tapeLocation != TapeLocation.None)
+                break;
+            commands.driveForward(DRIVE_SPEED, 6, 2);
+            sleep(500);
+        }
+
+        telemetry.addData("Tape location: ", tapeLocation);
+        if (tapeLocation == TapeLocation.None)
+        tapeLocation = TapeLocation.Center;
 
         telemetry.addData("Tape location: ", tapeLocation);
         AprilTag aprilTag = GetTagID(color, tapeLocation);
@@ -72,7 +107,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.update();
 
         // Move off the start
-        commands.driveForward(DRIVE_SPEED, 26, 3);
+        //commands.driveForward(DRIVE_SPEED, 26, 3);
 
         // Turn to tape line
         TurnTowardsSpikeMark(color, tapeLocation);
@@ -164,8 +199,34 @@ public abstract class AutonomousBase extends LinearOpMode {
             commands.strafeLeft(DRIVE_SPEED_FAST, GetStrafeDistance(parkingDirection, aprilTag), 5);
         if (parkingDirection == Right)
             commands.strafeRight(DRIVE_SPEED_FAST, GetStrafeDistance(parkingDirection, aprilTag), 5);
-        
+
         commands.driveForward(DRIVE_SPEED_FAST, 8, 2);
+    }
+
+    private TapeLocation getTfodRecognitions(TfodProcessor tfod) {
+        List<Recognition> currentRecognitions = tfod.getRecognitions();
+        //if (currentRecognitions == null) currentRecognitions = tfod.getFreshRecognitions();
+        if (currentRecognitions == null) return TapeLocation.None;
+
+        // Step through the list of recognitions and display info for each one.
+        for (Recognition recognition : currentRecognitions) {
+            double x = (recognition.getLeft() + recognition.getRight()) / 2 ;
+            double y = (recognition.getTop()  + recognition.getBottom()) / 2 ;
+
+            telemetry.addData(""," ");
+            telemetry.addData("Image", "%s (%.0f %% Conf.)", recognition.getLabel(), recognition.getConfidence() * 100);
+            telemetry.addData("- Position", "%.0f / %.0f", x, y);
+            telemetry.addData("- Size", "%.0f x %.0f", recognition.getWidth(), recognition.getHeight());
+            telemetry.update();
+
+            if (x < 500) return TapeLocation.Left;
+            if (x > 500 && x < 1500) return TapeLocation.Center;
+            if (x > 1500) return TapeLocation.Right;
+
+
+        }   // end for() loop
+
+        return  TapeLocation.None;
     }
 
     private boolean GetCloserToAprilTags(TapeColor color, int distance) {
@@ -207,14 +268,14 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     private int GetStrafeDistance(CenterStageEnums.StrafeDirection direction, AprilTag aprilTag) {
-        int distance = 26;
+        int distance = 25;
         if ((direction == Right && (aprilTag == AprilTag.RedRight || aprilTag == AprilTag.BlueRight)) ||
                 (direction == Left && (aprilTag == AprilTag.RedLeft || aprilTag == AprilTag.BlueLeft)))
-            distance = 18;
+            distance = 20;
 
         if ((direction == Right && (aprilTag == AprilTag.RedLeft || aprilTag == AprilTag.BlueLeft)) ||
             (direction == Left && (aprilTag == AprilTag.RedRight || aprilTag == AprilTag.BlueRight)))
-            distance = 32;
+            distance = 30;
 
         return distance;
     }

@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-@Autonomous(name = "AutonomousRedParkLeft", group = "Pushbot", preselectTeleOp="TeleOpDrive")
+@Autonomous(name = "Red - Park Left", group = "Pushbot", preselectTeleOp="TeleOpDrive")
 public class AutonomousRedParkLeft extends AutonomousBase {
     @Override
     public void runOpMode() throws InterruptedException {

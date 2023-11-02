@@ -51,6 +51,7 @@ public class CenterStageEnums {
     public enum TapeLocation{
         Left,
         Center,
-        Right
+        Right,
+        None
     }
 }

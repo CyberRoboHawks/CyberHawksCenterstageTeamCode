@@ -452,9 +452,9 @@ public class Commands extends HardwareMapping {
     public void reverseWristPosition() throws InterruptedException {
         double distanceCm = grabberDistance.getDistance(DistanceUnit.CM);
         if (distanceCm > 10) { //Move down
-            wristServo.setPosition(.13);
+            wristServo.setPosition(WRIST_DOWN);
         } else { //move up
-            wristServo.setPosition(0.7);
+            wristServo.setPosition(WRIST_UP);
         }
         sleep(250);
     }
@@ -543,6 +543,8 @@ public class Commands extends HardwareMapping {
 //                armMotorLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         setArmPower(power);
 
+        // prevent driving while arm is moving up
+        stopDrivingMotors();
         while ((runtime.seconds() < timeout) &&
                 (armMotorRight.isBusy() && armMotorLeft.isBusy())) {
 

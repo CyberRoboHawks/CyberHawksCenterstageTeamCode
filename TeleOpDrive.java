@@ -95,11 +95,14 @@ public class TeleOpDrive extends LinearOpMode {
             if (robot.hasBlinkin){
                 if (robot.armPosition == CenterStageEnums.Position.Up
                         && robot.hasGrabberDistance
-                        && robot.grabberDistance.getDistance(DistanceUnit.CM) <= 6) {
+                        && robot.grabberDistance.getDistance(DistanceUnit.CM) <= 4) {
                     robot.blinkinLedDriver.setPattern(BlinkinPattern.GREEN);
                 }
-                else if (gametime.seconds() >= 90){
+                else if (gametime.seconds() >= 90 && gametime.seconds() < 120){
                     robot.blinkinLedDriver.setPattern(BlinkinPattern.HEARTBEAT_RED);
+                }
+                else if (gametime.seconds() > 120){
+                    robot.blinkinLedDriver.setPattern(BlinkinPattern.RED);
                 }
                 else{
                     robot.blinkinLedDriver.setPattern(BlinkinPattern.RAINBOW_OCEAN_PALETTE);
@@ -115,6 +118,10 @@ public class TeleOpDrive extends LinearOpMode {
                     sleep(250);
                 }
 
+                if (gamepad1.a && robot.armPosition == CenterStageEnums.Position.Up) {
+                    commands.approachBackdrop(3, 2);
+                    sleep(250);
+                }
                 if (gamepad1.left_trigger > 0 && gamepad1.right_trigger > 0) {
                     telemetry.addData("triggers pressed", true);
                     telemetry.update();
@@ -214,7 +221,7 @@ public class TeleOpDrive extends LinearOpMode {
                         if (robot.isRoboHawks){
                             commands.setArmPositionRH(CenterStageEnums.ArmDirection.Down);
                         }else{
-                            commands.setWristPosition(CenterStageEnums.Position.Up);
+                            robot.wristServo.setPosition(robot.WRIST_UP);
                             commands.setArmPosition(CenterStageEnums.ArmDirection.Down, 3);
                             commands.setGrabberPosition(robot.GRABBER_OPEN);
                         }

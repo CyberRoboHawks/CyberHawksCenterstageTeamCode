@@ -58,11 +58,11 @@ public class HardwareMapping {
     public RevBlinkinLedDriver.BlinkinPattern pattern;
 
     public double GRABBER_CLOSED = .8;
-    public double GRABBER_OPEN = .5;// .33;
+    public double GRABBER_OPEN = .55;
 
     public double WRIST_UP = .7;
     public double WRIST_DOWN = .13;
-    public double WRIST_BACKDROP = .5;// .33;
+    public double WRIST_BACKDROP = .57;
 
     CenterStageEnums.Position armPosition = CenterStageEnums.Position.Down;
     HardwareMap hardwareMap = null;
