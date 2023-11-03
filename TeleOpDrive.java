@@ -8,6 +8,7 @@ import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver.BlinkinPattern;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
@@ -34,22 +35,6 @@ public class TeleOpDrive extends LinearOpMode {
     AprilTagProcessor tagProcessor = null;
 
     private final ElapsedTime runtime = new ElapsedTime();
-    /*static final double LIFT_MAX_UP_POWER = .5;
-    static final double LIFT_MAX_DOWN_POWER = .15;
-    static final double LIFT_HOLD_POWER = .2;*/
-
-//    public void printRobotStatus() {
-//        telemetry.addData("hasArmMotors: ", robot.hasArmMotors);
-//        telemetry.addData("hasCamera: ", robot.hasCamera);
-//        telemetry.addData("hasDriveMotors: ", robot.hasDriveMotors);
-//        telemetry.addData("hasDroneServo: ", robot.hasDroneServo);
-//        telemetry.addData("hasGrabberDistance: ", robot.hasGrabberDistance);
-//        telemetry.addData("hasGrabberServo: ", robot.hasGrabberServo);
-//        telemetry.addData("hasGripperSlideServo: ", robot.hasGripperSlideServo);
-//        telemetry.addData("hasLinearActuatorMotor: ", robot.hasLinearActuatorMotor);
-//        telemetry.addData("hasPixelServo: ", robot.hasPixelServo);
-//        telemetry.addData("hasWristServo: ", robot.hasWristServo);
-//    }
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -132,32 +117,6 @@ public class TeleOpDrive extends LinearOpMode {
                     drivePower = TURBO_DRIVE_SPEED;  // change drive speed to the turbo speed variable
                 }
 
-//                // test - will only be auton action
-//                if (gamepad1.a && robot.hasPixelServo) {
-//                    commands.deliverGroundPixel();
-//                }
-
-                // test
-//                if (gamepad1.dpad_up && robot.hasArmMotors && robot.isRoboHawks) {
-//                    commands.setArmPositionRH(CenterStageEnums.ArmDirection.Up, telemetry);
-//                    sleep(250);
-//                }
-//                if (gamepad1.dpad_down && robot.hasArmMotors && robot.isRoboHawks) {
-//                    commands.setArmPositionRH(CenterStageEnums.ArmDirection.Down, telemetry);
-//                    sleep(250);
-//                    commands.setArmPower(0);
-//                }
-//                if (robot.armPositionTarget != robot.armMotorRight.getCurrentPosition()){
-//                    telemetry.addData("current arm pos", robot.armMotorRight.getCurrentPosition());
-//                    telemetry.addData("current arm target",robot.armPositionTarget);
-//                    telemetry.update();
-//                    //commands.setArmPosition(robot.armPositionTarget);
-//                }
-//
-//                // test - will only be auton action
-//                if (gamepad1.x && robot.hasWristServo) {
-//                    commands.setWristPositionBackdrop();
-//                }
                 // mecanum driving
                 strafePower = gamepad1.left_stick_x;
                 forwardPower = -gamepad1.left_stick_y;
@@ -173,11 +132,11 @@ public class TeleOpDrive extends LinearOpMode {
             if (gamepad2 != null) {
                 if (commands.hasGripperSlideServo) {
                     if (gamepad2.dpad_left) {
-                        robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.FORWARD);
+                        robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
                         robot.gripperSlideServo.setPower(.5);
                         sleep(100);
                     } else if (gamepad2.dpad_right) {
-                        robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
+                        robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.FORWARD);
                         robot.gripperSlideServo.setPower(.5);
                         sleep(100);
                     }
@@ -204,6 +163,15 @@ public class TeleOpDrive extends LinearOpMode {
 
                 if (gamepad2.x && robot.hasWristServo) {
                     commands.reverseWristPosition();
+                    sleep(250);
+                }
+
+                if (gamepad2.b && robot.hasLinearActuatorMotor){
+                    if (robot.linearActuatorMotor.getCurrentPosition() > 50)
+                        commands.moveLinearActuatorToPosition(commands.LINEAR_MIN, commands.LINEAR_POWER);
+                    else
+                        commands.moveLinearActuatorToPosition(commands.LINEAR_FLOOR, commands.LINEAR_POWER);
+                    sleep(250);
                 }
 
                 armPower = -gamepad2.left_stick_y;
@@ -227,9 +195,10 @@ public class TeleOpDrive extends LinearOpMode {
                         }
                         robot.armPosition = CenterStageEnums.Position.Down;
                     }
+                    sleep(250);
                 }
 
-                if ( robot.hasLinearActuatorMotor ){
+                if (robot.hasLinearActuatorMotor ){
                     if (gamepad2.right_stick_y !=0){
                         commands.moveLinearActuator(-gamepad2.right_stick_y,false);
                     }
@@ -239,8 +208,22 @@ public class TeleOpDrive extends LinearOpMode {
                     }
                 }
             }
+
+            if (robot.hasLinearActuatorMotor){
+                if (!robot.linearActuatorMotor.isBusy())
+                    robot.linearActuatorMotor.setPower(0);
+
+                if (!robot.armMotorRight.isBusy() && robot.armMotorRight.getCurrentPosition() < 50)
+                    commands.setArmPower(0);
+
+//                telemetry.addData("linear", robot.linearActuatorMotor.isBusy());
+//                telemetry.addData("arms pos",robot.armMotorRight.getCurrentPosition());
+//                telemetry.addData("arms",robot.armMotorRight.isBusy());
+            }
+
+            telemetry.update();
         }
-        telemetry.update();
+
     }
 
     //allows us to quickly get our z angle

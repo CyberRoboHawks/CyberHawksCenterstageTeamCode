@@ -82,24 +82,23 @@ public abstract class AutonomousBase extends LinearOpMode {
         if (robot.hasBlinkin) {
             robot.blinkinLedDriver.setPattern(RevBlinkinLedDriver.BlinkinPattern.SINELON_LAVA_PALETTE);
         }
-sleep(3000);
+
         runtime.reset();
         telemetry.setAutoClear(false);
         telemetry.addData("Color: ", color);
 
         TapeLocation tapeLocation = TapeLocation.None;
-        // Identify pixel/team element placement
-        for (int i = 0; i < 4; i++) {
-            tapeLocation = getTfodRecognitions(tfod);
-            if (tapeLocation != TapeLocation.None)
-                break;
-            commands.driveForward(DRIVE_SPEED, 6, 2);
-            sleep(500);
-        }
+//        // Identify pixel/team element placement
+//        for (int i = 0; i < 4; i++) {
+//            tapeLocation = getTfodRecognitions(tfod);
+//            if (tapeLocation != TapeLocation.None)
+//                break;
+//            commands.driveForward(DRIVE_SPEED, 6, 2);
+//            sleep(500);
+//        }
 
         telemetry.addData("Tape location: ", tapeLocation);
-        if (tapeLocation == TapeLocation.None)
-        tapeLocation = TapeLocation.Center;
+        if (tapeLocation == TapeLocation.None) tapeLocation = TapeLocation.Center;
 
         telemetry.addData("Tape location: ", tapeLocation);
         AprilTag aprilTag = GetTagID(color, tapeLocation);
@@ -171,15 +170,18 @@ sleep(3000);
         }
 
         // RoboHawks - spin 180 degrees before deliver pixel on backdrop
-//        if (robot.isRoboHawks){
-//            commands.spinLeft(.3, 90, 6);
-//            sleep(250);
-//            commands.reverseDriveMotorDirection();
-//            sleep(250);
-//              //Raise arm
-//            commands.approachBackdrop(25, 10);
-//            sleep(250);
-//        }
+        if (robot.isRoboHawks){
+            if (color == TapeColor.Red)
+                commands.spinLeft(.3, 90, 6);
+            else
+                commands.spinRight(.3, -90, 6);
+
+            commands.reverseDriveMotorDirection();
+            sleep(250);
+              //Raise arm
+            commands.approachBackdrop(10, 10);
+            sleep(250);
+        }
 
         // Cyberhawks - deliver pixel on backdrop
         if (!robot.isRoboHawks) {

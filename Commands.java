@@ -30,6 +30,12 @@ public class Commands extends HardwareMapping {
     private final ElapsedTime runtime = new ElapsedTime();
     float[] hsvValues = {0F, 0F, 0F};
 
+    int LINEAR_MIN = 0;
+    int LINEAR_FLOOR = 4000;
+    int LINEAR_MAX = 12500;
+    int LINEAR_JUMP = 500;
+    double LINEAR_POWER = 1;
+
     Telemetry telemetry;
 
     public Commands(Telemetry telemetryIn) {
@@ -367,37 +373,36 @@ public class Commands extends HardwareMapping {
     }
 
     public void moveLinearActuator(double linearActuatorPower, boolean override) {
-        int MIN_LINEAR = 0;
-        int MAX_LINEAR = 12500;
-        int JUMP_LINEAR = 500;
-
         int currentPosition = linearActuatorMotor.getCurrentPosition();
         int targetPostion = currentPosition;
-        int power = 0;
+        double power = 0;
 
-        if (linearActuatorPower > 0 && (currentPosition < MAX_LINEAR || override)) {
-            targetPostion += JUMP_LINEAR;
-            if (targetPostion > MAX_LINEAR && !override)
-                targetPostion = MAX_LINEAR;
-
-            power = 1;
-        } else if (linearActuatorPower < 0 && (currentPosition > MIN_LINEAR || override)) {
-            targetPostion -= JUMP_LINEAR;
-            if (targetPostion < MIN_LINEAR && !override)
-                targetPostion = MIN_LINEAR;
-
-            power = 1;
+        if (linearActuatorPower > 0 && (currentPosition < LINEAR_MAX || override)) {
+            targetPostion += LINEAR_JUMP;
+            if (targetPostion > LINEAR_MAX && !override)
+                targetPostion = LINEAR_MAX;
+            power = LINEAR_POWER;
+        } else if (linearActuatorPower < 0 && (currentPosition > LINEAR_MIN || override)) {
+            targetPostion -= LINEAR_JUMP;
+            if (targetPostion < LINEAR_MIN && !override)
+                targetPostion = LINEAR_MIN;
+            power = LINEAR_POWER;
         } else {
             power = 0;
         }
-        linearActuatorMotor.setPower(power);
-        linearActuatorMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        linearActuatorMotor.setTargetPosition(targetPostion);
+
+        if (power > 0) moveLinearActuatorToPosition(targetPostion, power);
 
 //        currentPosition = linearActuatorMotor.getCurrentPosition();
 //        telemetry.addData("current pos", currentPosition);
 //        telemetry.addData("target", targetPostion);
 //        telemetry.update();
+    }
+
+    public void moveLinearActuatorToPosition(int targetPostion, double power) {
+        linearActuatorMotor.setPower(power);
+        linearActuatorMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        linearActuatorMotor.setTargetPosition(targetPostion);
     }
 
     public void printRobotStatus(Telemetry telemetry) {
@@ -491,34 +496,20 @@ public class Commands extends HardwareMapping {
     public void setArmPositionRH(CenterStageEnums.ArmDirection armDirection) throws InterruptedException {
         if (!hasArmMotors)
             return;
-        int MAX_HEIGHT = 95;
-        int step = 50;
-        double power = 1;
+
+        int MAX_HEIGHT = 90;
+        double power = .75;
 
         if (armDirection == CenterStageEnums.ArmDirection.Up) {
-            armPositionTarget = armPositionTarget + step;
-            if (armPositionTarget > MAX_HEIGHT)
-                armPositionTarget = MAX_HEIGHT;
+            armPositionTarget = MAX_HEIGHT;
         } else if (armDirection == CenterStageEnums.ArmDirection.Down) {
-            armPositionTarget = armPositionTarget - step;
-            setArmPosition(armPositionTarget);
-            // Stop all motion;
-            if (armPositionTarget <= 0) {
-                armPositionTarget = 0;
-                power = -1;
-                setArmPosition(armPositionTarget);
-                setArmPower(power);
-                sleep(500);
-                power = 0;
-            }
-
+            armPositionTarget = -10;
         }
         setArmPosition(armPositionTarget);
-        sleep(250);
         armMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         armMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         setArmPower(power);
-        sleep(1000);
+
         telemetry.addData("position", armPositionTarget);
         telemetry.addData("armMotorRight", armMotorRight.getCurrentPosition());
         telemetry.addData("armMotorLeft", armMotorLeft.getCurrentPosition());
