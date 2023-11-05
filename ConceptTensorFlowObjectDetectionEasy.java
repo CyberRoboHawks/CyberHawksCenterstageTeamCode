@@ -29,17 +29,20 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import android.util.Size;
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.robotcore.external.hardware.camera.BuiltinCameraDirection;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
 import org.firstinspires.ftc.robotcore.external.tfod.Recognition;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.tfod.TfodProcessor;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /*
  * This OpMode illustrates the basics of TensorFlow Object Detection, using
@@ -49,9 +52,11 @@ import java.util.List;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list.
  */
 @TeleOp(name = "Concept: TensorFlow Object Detection Easy", group = "Concept")
+
 //@Disabled
 public class ConceptTensorFlowObjectDetectionEasy extends LinearOpMode {
-
+    Commands commands = new Commands(telemetry);
+    HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
     private static final boolean USE_WEBCAM = true;  // true for webcam, false for phone camera
 
     /**
@@ -64,10 +69,53 @@ public class ConceptTensorFlowObjectDetectionEasy extends LinearOpMode {
      */
     private VisionPortal visionPortal;
 
+
+    ExposureControl myExposureControl;  // declare exposure control object
+    long minExp;
+    long maxExp;
+    long curExp;            // exposure is duration, in time units specified
+
+    GainControl myGainControl;      // declare gain control object
+    int minGain;
+    int maxGain;
+    int curGain;
+    boolean wasSetGainSuccessful;   // returned from setGain()
+CenterStageEnums.TapeLocation tapeLocation = CenterStageEnums.TapeLocation.None;
+
     @Override
     public void runOpMode() {
 
         initTfod();
+
+        // *** ADD WEBCAM CONTROLS -- SECTION START ***
+
+        // Assign the exposure and gain control objects, to use their methods.
+        myExposureControl = visionPortal.getCameraControl(ExposureControl.class);
+        myGainControl = visionPortal.getCameraControl(GainControl.class);
+
+        // get webcam exposure limits
+        minExp = myExposureControl.getMinExposure(TimeUnit.MILLISECONDS);
+        maxExp = myExposureControl.getMaxExposure(TimeUnit.MILLISECONDS);
+
+        // get webcam gain limits
+        minGain = myGainControl.getMinGain();
+        maxGain = myGainControl.getMaxGain();
+
+        // Change mode to Manual, in order to control directly.
+        // A non-default setting may persist in the camera, until changed again.
+        myExposureControl.setMode(ExposureControl.Mode.Manual);
+
+        // Retrieve from webcam its current exposure and gain values
+        curExp = myExposureControl.getExposure(TimeUnit.MILLISECONDS);
+        curGain = myGainControl.getGain();
+
+        // display exposure mode and starting values to user
+        telemetry.addLine("\nTouch Start arrow to control webcam Exposure and Gain");
+        telemetry.addData("\nCurrent exposure mode", myExposureControl.getMode());
+        telemetry.addData("Current exposure value", curExp);
+        telemetry.addData("Current gain value", curGain);
+        telemetry.update();
+        // *** ADD WEBCAM CONTROLS -- SECTION END ***
 
         // Wait for the DS start button to be touched.
         telemetry.addData("DS preview on/off", "3 dots, Camera Stream");
@@ -78,7 +126,8 @@ public class ConceptTensorFlowObjectDetectionEasy extends LinearOpMode {
         if (opModeIsActive()) {
             while (opModeIsActive()) {
 
-                telemetryTfod();
+                //telemetryTfod();
+                tapeLocation = getTfodRecognitions(tfod);
 
                 // Push telemetry to the Driver Station.
                 telemetry.update();
@@ -107,17 +156,42 @@ public class ConceptTensorFlowObjectDetectionEasy extends LinearOpMode {
 
         // Create the TensorFlow processor the easy way.
         tfod = TfodProcessor.easyCreateWithDefaults();
+        tfod.setMinResultConfidence(.5f);
 
         // Create the vision portal the easy way.
-        if (USE_WEBCAM) {
-            visionPortal = VisionPortal.easyCreateWithDefaults(
-                hardwareMap.get(WebcamName.class, "Webcam 1"), tfod);
-        } else {
-            visionPortal = VisionPortal.easyCreateWithDefaults(
-                BuiltinCameraDirection.BACK, tfod);
-        }
 
-    }   // end method initTfod()
+        visionPortal = new VisionPortal.Builder()
+                .addProcessor(tfod)
+                .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+                .setCameraResolution(new Size(1920, 1080))
+                .build();
+
+    }
+    // end method initTfod()
+
+    private CenterStageEnums.TapeLocation getTfodRecognitions(TfodProcessor tfod) {
+        List<Recognition> currentRecognitions = tfod.getRecognitions();
+        //if (currentRecognitions == null) currentRecognitions = tfod.getFreshRecognitions();
+        if (currentRecognitions == null) return CenterStageEnums.TapeLocation.None;
+
+        // Step through the list of recognitions and display info for each one.
+        for (Recognition recognition : currentRecognitions) {
+            double x = (recognition.getLeft() + recognition.getRight()) / 2 ;
+            double y = (recognition.getTop()  + recognition.getBottom()) / 2 ;
+
+            telemetry.addData(""," ");
+            telemetry.addData("Image", "%s (%.0f %% Conf.)", recognition.getLabel(), recognition.getConfidence() * 100);
+            telemetry.addData("- Position", "%.0f / %.0f", x, y);
+            telemetry.addData("- Size", "%.0f x %.0f", recognition.getWidth(), recognition.getHeight());
+            telemetry.update();
+
+            if (x < 500) return CenterStageEnums.TapeLocation.Left;
+            if (x > 500 && x < 1500) return CenterStageEnums.TapeLocation.Center;
+            if (x > 1500) return CenterStageEnums.TapeLocation.Right;
+        }   // end for() loop
+
+        return  CenterStageEnums.TapeLocation.None;
+    }
 
     /**
      * Add telemetry about TensorFlow Object Detection (TFOD) recognitions.
@@ -129,10 +203,10 @@ public class ConceptTensorFlowObjectDetectionEasy extends LinearOpMode {
 
         // Step through the list of recognitions and display info for each one.
         for (Recognition recognition : currentRecognitions) {
-            double x = (recognition.getLeft() + recognition.getRight()) / 2 ;
-            double y = (recognition.getTop()  + recognition.getBottom()) / 2 ;
+            double x = (recognition.getLeft() + recognition.getRight()) / 2;
+            double y = (recognition.getTop() + recognition.getBottom()) / 2;
 
-            telemetry.addData(""," ");
+            telemetry.addData("", " ");
             telemetry.addData("Image", "%s (%.0f %% Conf.)", recognition.getLabel(), recognition.getConfidence() * 100);
             telemetry.addData("- Position", "%.0f / %.0f", x, y);
             telemetry.addData("- Size", "%.0f x %.0f", recognition.getWidth(), recognition.getHeight());

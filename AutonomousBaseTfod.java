@@ -23,10 +23,11 @@ import org.firstinspires.ftc.vision.tfod.TfodProcessor;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class AutonomousBase extends LinearOpMode {
+public abstract class AutonomousBaseTfod extends LinearOpMode {
     static final float DRIVE_SPEED = 0.3f;
     static final float DRIVE_SPEED_FAST = 0.6f;
 
+    static final float ROTATE_SPEED = 0.3f;
 
     private final ElapsedTime runtime = new ElapsedTime();
 
@@ -40,24 +41,32 @@ public abstract class AutonomousBase extends LinearOpMode {
     AprilTagProcessor tagProcessor = null;
     VisionPortal visionPortal = null;
     double startingAngle;
-//    private TfodProcessor tfod;
-//     double totalSpikeDistance = 0;
-//     double goalSpikeDistance = 26;
+    private TfodProcessor tfod;
+     double totalSpikeDistance = 0;
+     double goalSpikeDistance = 26;
 
     public void startupInit() {
         commands.init(hardwareMap);
         robot.init(hardwareMap);
 
         if (robot.hasCamera) {
+//            tfod = new TfodProcessor.Builder()
+//                    .setModelAssetName(TFOD_MODEL_ASSEST)
+//                    .setModelLabels(LABELS)
+//                    .build();
+
+            tfod = TfodProcessor.easyCreateWithDefaults();
+            tfod.setMinResultConfidence(.6f);
             tagProcessor = new AprilTagProcessor.Builder()
                     .setDrawCubeProjection(true)
                     .setDrawTagID(true)
                     .build();
             visionPortal = new VisionPortal.Builder()
                     .addProcessor(tagProcessor)
+                    .addProcessor(tfod)
                     .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
                     //.setCameraResolution(new Size(800, 600))
-                    .setCameraResolution(new Size(1920, 1080))
+                  //  .setCameraResolution(new Size(1920, 1080))
                     .build();
         }
 
@@ -78,15 +87,55 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.setAutoClear(false);
         telemetry.addData("Color: ", color);
 
+        TapeLocation tapeLocation = getTfodRecognitions(tfod);
         // Move off the start
-        commands.driveForward(DRIVE_SPEED, 26, 3);
+        commands.driveForward(DRIVE_SPEED, 8, 3);
+        totalSpikeDistance += 8;
 
+        tapeLocation = getTfodRecognitions(tfod);
         // Identify pixel/team element placement
-        TapeLocation tapeLocation = TapeLocation.Center;
+
+        if (tapeLocation == TapeLocation.None){
+            commands.spinLeft(ROTATE_SPEED, 20, 2);
+            sleep(500);
+            tapeLocation = getTfodRecognitions(tfod);
+            telemetry.addData("after", "first check");
+            telemetry.update();
+            if (tapeLocation == TapeLocation.None) {
+                tapeLocation = getTfodRecognitions(tfod);
+            }
+            commands.spinRight(ROTATE_SPEED, 0, 2);
+        }
+
+        if (tapeLocation == TapeLocation.None ){
+            int count = 0;
+            while (count < 3 && tapeLocation == TapeLocation.None) {
+                telemetry.addData("count", count);
+                telemetry.update();
+                tapeLocation = getTfodRecognitions(tfod);
+                if (tapeLocation != TapeLocation.None) break;
+                commands.driveForward(DRIVE_SPEED, 4, 2);
+                totalSpikeDistance += 4;
+                sleep(1000);
+                tapeLocation = getTfodRecognitions(tfod);
+
+                if (tapeLocation != TapeLocation.None) break;
+                count++;
+            }
+        }
+        commands.driveForward(DRIVE_SPEED, goalSpikeDistance - totalSpikeDistance, 2);
+
+        telemetry.addData("Tape location: ", tapeLocation);
+        if (tapeLocation == TapeLocation.None) tapeLocation = TapeLocation.Center;
+
         telemetry.addData("Tape location: ", tapeLocation);
         AprilTag aprilTag = GetTagID(color, tapeLocation);
         telemetry.addData("April tag: ", aprilTag);
         telemetry.update();
+
+        // commands.driveForward(DRIVE_SPEED, 26, 3);
+
+        // tapeLocation = getTfodRecognitions(tfod);
 
         // Turn to tape line
         TurnTowardsSpikeMark(color, tapeLocation);
@@ -94,6 +143,8 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Find tape line
         boolean isStrafe = (tapeLocation == TapeLocation.Left);
         commands.ApproachTape(color, isStrafe, 3);
+
+        sleep(30000);
 
         // Orient for pixel placement
         if (tapeLocation != TapeLocation.Left)
@@ -115,16 +166,16 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Orient towards backdrop red/blue
         if (color == TapeColor.Red && tapeLocation == TapeLocation.Center ||
                 color == TapeColor.Red && tapeLocation == TapeLocation.Left) {
-            commands.spinRight(DRIVE_SPEED, -90, 5);
+            commands.spinRight(ROTATE_SPEED, -90, 5);
             commands.strafeLeft(DRIVE_SPEED_FAST, 2, 2);
         } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Center) {
-            commands.spinLeft(DRIVE_SPEED, 90, 5);
+            commands.spinLeft(ROTATE_SPEED, 90, 5);
             commands.strafeRight(DRIVE_SPEED_FAST, 2, 2);
         } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Right) {
             commands.driveBackwards(DRIVE_SPEED_FAST, 5, 3);
-            commands.spinLeft(DRIVE_SPEED, 90, 5);
+            commands.spinLeft(ROTATE_SPEED, 90, 5);
         } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Left) {
-            commands.spinLeft(DRIVE_SPEED, 90, 5);
+            commands.spinLeft(ROTATE_SPEED, 90, 5);
         }
         telemetry.update();
 
@@ -152,9 +203,9 @@ public abstract class AutonomousBase extends LinearOpMode {
         // RoboHawks - spin 180 degrees before deliver pixel on backdrop
         if (robot.isRoboHawks) {
             if (color == TapeColor.Red)
-                commands.spinLeft(DRIVE_SPEED_FAST, 90, 6);
+                commands.spinLeft(ROTATE_SPEED, 90, 6);
             else
-                commands.spinRight(DRIVE_SPEED_FAST, -90, 6);
+                commands.spinRight(ROTATE_SPEED, -90, 6);
 
             commands.reverseDriveMotorDirection();
             // sleep(250);
@@ -252,12 +303,12 @@ public abstract class AutonomousBase extends LinearOpMode {
             commands.driveForward(DRIVE_SPEED_FAST, distance, 3);
 
         if (color == TapeColor.Blue) {
-            if (commands.getAngle() > 90) commands.spinRight(DRIVE_SPEED, 90, 2);
-            else if (commands.getAngle() < 90) commands.spinLeft(DRIVE_SPEED, 90, 2);
+            if (commands.getAngle() > 90) commands.spinRight(ROTATE_SPEED, 90, 2);
+            else if (commands.getAngle() < 90) commands.spinLeft(ROTATE_SPEED, 90, 2);
         }
         if (color == TapeColor.Red) {
-            if (commands.getAngle() > -90) commands.spinRight(DRIVE_SPEED, -90, 2);
-            else if (commands.getAngle() < -90) commands.spinLeft(DRIVE_SPEED, -90, 2);
+            if (commands.getAngle() > -90) commands.spinRight(ROTATE_SPEED, -90, 2);
+            else if (commands.getAngle() < -90) commands.spinLeft(ROTATE_SPEED, -90, 2);
         }
         return tagsFound;
     }
@@ -265,18 +316,18 @@ public abstract class AutonomousBase extends LinearOpMode {
     private void TurnTowardsSpikeMark(TapeColor color, TapeLocation tapeLocation) {
         if (color == TapeColor.Red) {
             if (tapeLocation == TapeLocation.Left) {
-                commands.strafeLeft(DRIVE_SPEED, 6, 2);
+                commands.strafeLeft(.3, 6, 2);
             }
             if (tapeLocation == TapeLocation.Right) {
-                commands.spinRight(DRIVE_SPEED, -90, 3);
+                commands.spinRight(ROTATE_SPEED, -90, 3);
             }
         }
         if (color == TapeColor.Blue) {
             if (tapeLocation == TapeLocation.Left) {
-                commands.strafeLeft(DRIVE_SPEED, 6, 2);
+                commands.strafeLeft(.3, 6, 2);
             }
             if (tapeLocation == TapeLocation.Right) {
-                commands.spinRight(DRIVE_SPEED, -90, 3);
+                commands.spinRight(ROTATE_SPEED, -90, 3);
             }
         }
     }

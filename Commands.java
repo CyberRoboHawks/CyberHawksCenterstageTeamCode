@@ -31,7 +31,7 @@ public class Commands extends HardwareMapping {
     float[] hsvValues = {0F, 0F, 0F};
 
     int LINEAR_MIN = 0;
-    int LINEAR_FLOOR = 4000;
+    int LINEAR_FLOOR = 3400;
     int LINEAR_MAX = 12500;
     int LINEAR_JUMP = 500;
     double LINEAR_POWER = 1;
@@ -82,12 +82,12 @@ public class Commands extends HardwareMapping {
     }
 
     public void driveBackwards(double power, double distanceInInches, double timeout) {
-        if (isReverse) distanceInInches = distanceInInches * -1;
+        //if (isReverse) distanceInInches = distanceInInches * -1;
         encoderDriveStraight(power, -distanceInInches, timeout);
     }
 
     public void driveForward(double power, double distanceInInches, double timeout) {
-        if (isReverse) distanceInInches = distanceInInches * -1;
+        //if (isReverse) distanceInInches = distanceInInches * -1;
         encoderDriveStraight(power, distanceInInches, timeout);
     }
 
