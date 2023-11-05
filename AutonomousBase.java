@@ -27,22 +27,13 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final float DRIVE_SPEED = 0.3f;
     static final float DRIVE_SPEED_FAST = 0.6f;
 
-
     private final ElapsedTime runtime = new ElapsedTime();
 
-    //    private static final String TFOD_MODEL_ASSEST = "CyberHawks_1.tflite";
-//    private static  final String[] LABELS = {
-//        "Blue Prop",
-//            "Red Prop"
-//    };
     Commands commands = new Commands(telemetry);
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
     AprilTagProcessor tagProcessor = null;
     VisionPortal visionPortal = null;
     double startingAngle;
-//    private TfodProcessor tfod;
-//     double totalSpikeDistance = 0;
-//     double goalSpikeDistance = 26;
 
     public void startupInit() {
         commands.init(hardwareMap);
@@ -64,7 +55,6 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.addData("Status:", "ready");
         startingAngle = commands.getAngle();
         telemetry.addData("angle", startingAngle);
-        //   getTfodRecognitions(tfod);
 //        commands.printRobotStatus(telemetry);
         telemetry.update();
     }
@@ -157,7 +147,7 @@ public abstract class AutonomousBase extends LinearOpMode {
                 commands.spinRight(DRIVE_SPEED_FAST, -90, 6);
 
             commands.reverseDriveMotorDirection();
-            // sleep(250);
+
             //Raise arm
             commands.setArmPositionRH(CenterStageEnums.ArmDirection.Up);
             commands.moveLinearActuatorToPosition(commands.LINEAR_FLOOR, commands.LINEAR_POWER);
