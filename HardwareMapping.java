@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.CenterStageEnums.Position.Down;
+import static org.firstinspires.ftc.teamcode.CenterStageEnums.Position.Up;
+
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -13,17 +16,18 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.hardware.configuration.WebcamConfiguration;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
 public class HardwareMapping {
     //region robot "has" properties
+    public boolean hasArmDownSensor = false;
     public boolean hasArmMotors = false;
     public boolean hasBlinkin = false;
     public boolean hasCamera = false;
     public boolean hasColorSensor = false;
     public boolean hasDriveMotors = false;
     public boolean hasDroneServo = false;
+    public boolean hasDroneSecureServo = false;
     public boolean hasGrabberDistance = false;
     public boolean hasGrabberServo = false;
     public boolean hasGripperSlideServo = false;
@@ -43,19 +47,18 @@ public class HardwareMapping {
     public DistanceSensor grabberDistance;
     public WebcamName webCam1 = null;
     public ColorSensor colorSensor = null;
-    public TouchSensor limitSwitchIn = null;
-    public TouchSensor limitSwitchOut = null;
     public Servo droneServo = null;
+    public Servo droneSecureServo = null;
     public Servo grabberServo = null;
     public CRServo gripperSlideServo = null;
     public Servo pixelServo = null;
     public Servo wristServo = null;
+    public TouchSensor armDownSensor = null;
     public IMU imu = null;
     public BNO055IMU imuRoboHawks = null;
     public int armPositionTarget = 0;
 
     public RevBlinkinLedDriver blinkinLedDriver;
-    public RevBlinkinLedDriver.BlinkinPattern pattern;
 
     public double GRABBER_CLOSED = .8;
     public double GRABBER_OPEN = .55;
@@ -64,7 +67,7 @@ public class HardwareMapping {
     public double WRIST_DOWN = .13;
     public double WRIST_BACKDROP = .57;
 
-    CenterStageEnums.Position armPosition = CenterStageEnums.Position.Down;
+    CenterStageEnums.Position armPosition = Down;
     HardwareMap hardwareMap = null;
 
     /* Initialize standard Hardware interfaces */
@@ -72,7 +75,8 @@ public class HardwareMapping {
         // Save reference to Hardware map
         hardwareMap = hardware;
 
-        if (canGetDevice("blinkin")){
+
+        if (canGetDevice("blinkin")) {
             blinkinLedDriver = hardwareMap.get(RevBlinkinLedDriver.class, "blinkin");
             hasBlinkin = true;
         }
@@ -82,7 +86,7 @@ public class HardwareMapping {
         if (canGetDevice("armMotorLeft"))
             armMotorLeft = setupMotor("armMotorLeft", DcMotor.Direction.REVERSE, 0, true, true);
         hasArmMotors = (canGetDevice("armMotorRight") && canGetDevice("armMotorLeft"));
-        if (hasArmMotors){
+        if (hasArmMotors) {
             armMotorRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             armMotorLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             armMotorRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -94,9 +98,18 @@ public class HardwareMapping {
             hasCamera = true;
         }
 
-        if (canGetDevice("colorSensor")){
+        if (canGetDevice("colorSensor")) {
             colorSensor = hardwareMap.get(ColorSensor.class, "colorSensor");
             hasColorSensor = true;
+        }
+        if (canGetDevice("armDownSensor")) {
+            armDownSensor = hardwareMap.get(TouchSensor.class, "armDownSensor");
+            hasArmDownSensor = true;
+            if (armDownSensor.isPressed()) {
+                armPosition = Down;
+            } else {
+                armPosition = Up;
+            }
         }
 
         if (canGetDevice("leftFrontMotor") && canGetDevice("leftBackMotor")
@@ -108,10 +121,14 @@ public class HardwareMapping {
             hasDriveMotors = true;
         }
 
-        // Servos
+        //region Servos
         if (canGetDevice("droneServo")) {
             droneServo = setupServo("droneServo", 0);
             hasDroneServo = true;
+        }
+        if (canGetDevice("droneSecureServo")) {
+            droneSecureServo = setupServo("droneSecureServo", .2);
+            hasDroneSecureServo = true;
         }
         if (canGetDevice("grabberServo")) {
             grabberServo = setupServo("grabberServo", GRABBER_CLOSED);
@@ -128,15 +145,16 @@ public class HardwareMapping {
             hasWristServo = true;
         }
 
-        if (canGetDevice("grabberDistance")) {
-            grabberDistance = hardwareMap.get(DistanceSensor.class, "grabberDistance");
-            hasGrabberDistance = true;
-        }
-
         if (canGetDevice("gripperSlideServo")) {
             gripperSlideServo = setupCRServo("gripperSlideServo", 0.00);
             gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
             hasGripperSlideServo = true;
+        }
+        //endregion
+
+        if (canGetDevice("grabberDistance")) {
+            grabberDistance = hardwareMap.get(DistanceSensor.class, "grabberDistance");
+            hasGrabberDistance = true;
         }
 
         if (canGetDevice("linearActuatorMotor")) {
@@ -144,31 +162,21 @@ public class HardwareMapping {
             hasLinearActuatorMotor = true;
         }
 
-        if (canGetDevice("limitSwitchIn"))
-            limitSwitchIn = hardwareMap.get(TouchSensor.class, "limitSwitchIn");
-        if (canGetDevice("limitSwitchOut"))
-            limitSwitchOut = hardwareMap.get(TouchSensor.class, "limitSwitchOut");
-
         if (isRoboHawks) {
             BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
             parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
             imuRoboHawks = hardwareMap.get(BNO055IMU.class, "imu");
             imuRoboHawks.initialize(parameters);
-
-            stopAndRestMotorEncoders(leftFrontMotor);
-            stopAndRestMotorEncoders(leftBackMotor);
-            stopAndRestMotorEncoders(rightFrontMotor);
-            stopAndRestMotorEncoders(rightBackMotor);
-            stopAndRestMotorEncoders(linearActuatorMotor);
         } else {
             imu = hardwareMap.get(IMU.class, "imu");
         }
     }
 
-    private void stopAndRestMotorEncoders(DcMotor motor){
+    public void stopAndRestMotorEncoders(DcMotor motor) {
         motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
+
     private boolean canGetDevice(String deviceName) {
         try {
             hardwareMap.get(deviceName);

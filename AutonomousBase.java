@@ -34,6 +34,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     AprilTagProcessor tagProcessor = null;
     VisionPortal visionPortal = null;
     double startingAngle;
+    double targetDistance = 90;
 
     public void startupInit() {
         commands.init(hardwareMap);
@@ -55,11 +56,14 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.addData("Status:", "ready");
         startingAngle = commands.getAngle();
         telemetry.addData("angle", startingAngle);
-//        commands.printRobotStatus(telemetry);
+
         telemetry.update();
     }
 
     protected void executeOperations(TapeColor color, CenterStageEnums.StrafeDirection parkingDirection) throws InterruptedException {
+        if (robot.hasDroneSecureServo) {
+            robot.droneSecureServo.setPosition(Commands.DRONE_SECURE);
+        }
         if (robot.hasBlinkin) {
             robot.blinkinLedDriver.setPattern(RevBlinkinLedDriver.BlinkinPattern.SINELON_LAVA_PALETTE);
         }
@@ -105,38 +109,41 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Orient towards backdrop red/blue
         if (color == TapeColor.Red && tapeLocation == TapeLocation.Center ||
                 color == TapeColor.Red && tapeLocation == TapeLocation.Left) {
-            commands.spinRight(DRIVE_SPEED, -90, 5);
+            commands.spinRight(DRIVE_SPEED, -88, 5);
             commands.strafeLeft(DRIVE_SPEED_FAST, 2, 2);
-        } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Center) {
-            commands.spinLeft(DRIVE_SPEED, 90, 5);
-            commands.strafeRight(DRIVE_SPEED_FAST, 2, 2);
-        } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Right) {
-            commands.driveBackwards(DRIVE_SPEED_FAST, 5, 3);
-            commands.spinLeft(DRIVE_SPEED, 90, 5);
-        } else if (color == TapeColor.Blue && tapeLocation == TapeLocation.Left) {
-            commands.spinLeft(DRIVE_SPEED, 90, 5);
+        } else if (color == TapeColor.Blue) {
+            if (tapeLocation == TapeLocation.Right) {
+                commands.driveBackwards(DRIVE_SPEED_FAST, 5, 3);
+            }
+            commands.spinLeft(DRIVE_SPEED, 88, 5);
+            if (tapeLocation == TapeLocation.Center) {
+                commands.strafeRight(DRIVE_SPEED_FAST, 2, 2);
+            }
         }
         telemetry.update();
 
-        //        if (tapeLocation == TapeLocation.Center) {
-        //            // Center red reorientation
-        //            commands.driveForward(DRIVE_SPEED_FAST, 6, 3);
-        //            commands.strafeLeft(DRIVE_SPEED_FAST, 3, 2);
-        //        }
-
         runtime.reset();
         boolean tagsFound = false;
-        while (!isStopRequested() && robot.hasCamera && runtime.seconds() < 3 && !tagsFound) {
+        while (!isStopRequested() && robot.hasCamera && runtime.seconds() < 8 && !tagsFound) {
             tagsFound = GetCloserToAprilTags(color, 6);
-            sleep(250);
+            targetDistance -= 6;
+            sleep(500);
+            telemetry.addData("target distance: ", targetDistance);
+            telemetry.addData("tags found: ", tagsFound);
+            telemetry.update();
         }
 
         runtime.reset();
+
         // Drive towards backdrop find April tag
-        while (!isStopRequested() && robot.hasCamera && runtime.seconds() < 6) {
+        while (!isStopRequested() && robot.hasCamera && runtime.seconds() < 6 && targetDistance > 10) {
             commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Rotate, aprilTag.getValue());
             commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Strafe, aprilTag.getValue());
-            commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Straight, aprilTag.getValue());
+            double distance = commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Straight, aprilTag.getValue());
+            if (distance > 0) {
+                targetDistance = distance;
+                tagsFound = true;
+            }
         }
 
         // RoboHawks - spin 180 degrees before deliver pixel on backdrop
@@ -172,7 +179,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         }
 
         // Cyberhawks - deliver pixel on backdrop
-        if (!robot.isRoboHawks) {
+        if (!robot.isRoboHawks && tagsFound) {
             commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
             sleep(250);
             commands.approachBackdrop(6, 10);
@@ -185,12 +192,17 @@ public abstract class AutonomousBase extends LinearOpMode {
         }
 
         // Park
-        if (parkingDirection == Left)
+        if (parkingDirection == Left) {
             commands.strafeLeft(DRIVE_SPEED_FAST, GetStrafeDistance(parkingDirection, aprilTag), 5);
-        if (parkingDirection == Right)
+        }
+        if (parkingDirection == Right) {
             commands.strafeRight(DRIVE_SPEED_FAST, GetStrafeDistance(parkingDirection, aprilTag), 5);
+        }
 
-        commands.driveForward(DRIVE_SPEED_FAST, 8, 2);
+        commands.driveForward(DRIVE_SPEED_FAST, 8, 1);
+        if (!tagsFound) {
+            commands.driveForward(DRIVE_SPEED, targetDistance, 1);
+        }
     }
 
     private TapeLocation getTfodRecognitions(TfodProcessor tfod) {
@@ -199,7 +211,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.addData("recognitions", currentRecognitions.size());
         int i = 0;
         telemetry.addData("recognition", currentRecognitions);
-        while (i < 10 && (currentRecognitions == null || currentRecognitions.size() ==0)){
+        while (i < 10 && (currentRecognitions == null || currentRecognitions.size() == 0)) {
             currentRecognitions = tfod.getFreshRecognitions();
             telemetry.addData("inside recognitions", i);
             //telemetry.addData("recognitions", currentRecognitions.size());
@@ -272,7 +284,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     private int GetStrafeDistance(CenterStageEnums.StrafeDirection direction, AprilTag aprilTag) {
-        int distance = 30;
+        int distance = 25;
         if ((direction == Right && (aprilTag == AprilTag.RedRight || aprilTag == AprilTag.BlueRight)) ||
                 (direction == Left && (aprilTag == AprilTag.RedLeft || aprilTag == AprilTag.BlueLeft)))
             distance = 20;
