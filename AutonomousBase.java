@@ -147,7 +147,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         }
 
         // RoboHawks - spin 180 degrees before deliver pixel on backdrop
-        if (robot.isRoboHawks) {
+        if (robot.isRoboHawks && tagsFound ) {
             if (color == TapeColor.Red)
                 commands.spinLeft(DRIVE_SPEED_FAST, 90, 6);
             else
@@ -284,7 +284,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     private int GetStrafeDistance(CenterStageEnums.StrafeDirection direction, AprilTag aprilTag) {
-        int distance = 25;
+        int distance = 27;
         if ((direction == Right && (aprilTag == AprilTag.RedRight || aprilTag == AprilTag.BlueRight)) ||
                 (direction == Left && (aprilTag == AprilTag.RedLeft || aprilTag == AprilTag.BlueLeft)))
             distance = 20;

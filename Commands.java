@@ -55,8 +55,17 @@ public class Commands extends HardwareMapping {
             if (distanceCm < 10) {
                 stepDistance = 1;
             }
-
-            driveForward(power, stepDistance, 1);
+             if (isRoboHawks){
+                 if (isReverse)
+                     driveForward(power, stepDistance, 1);
+                 else
+                     driveBackwards(power, stepDistance, 1);
+             }else{
+                 if (isReverse)
+                     driveBackwards(power, stepDistance, 1);
+                 else
+                    driveForward(power, stepDistance, 1);
+             }
             distanceCm = grabberDistance.getDistance(DistanceUnit.CM);
         }
     }
@@ -345,6 +354,7 @@ public class Commands extends HardwareMapping {
         droneServo.setPosition(1);
         sleep(500);
         droneServo.setPosition(0);
+        if (hasWristServo) wristServo.setPosition(WRIST_UP);
     }
 
     public void moveLinearActuator(double linearActuatorPower, boolean override) {
@@ -452,11 +462,17 @@ public class Commands extends HardwareMapping {
         if (armDirection == ArmDirection.Up) {
             armPositionTarget = MAX_HEIGHT;
         } else if (armDirection == ArmDirection.Down) {
-            armPositionTarget = -40;
+            armPositionTarget = -20;
         }
         setArmPosition(armPositionTarget);
         setArmMode(DcMotor.RunMode.RUN_TO_POSITION);
         setArmPower(power);
+        if (armDirection == ArmDirection.Down){
+            stopDrivingMotors();
+            sleep(750);
+            setArmPower(0);
+        }
+
     }
 
     public void setArmPosition(ArmDirection armDirection, double timeout) throws InterruptedException {

@@ -126,7 +126,7 @@ public class TeleOpDrive extends LinearOpMode {
                 }
 
                 // prevent early launch with gameTimer check for endgame
-                if (gamepad2.y && robot.hasDroneServo) {// && gametime.seconds() > 90){
+                if (gamepad2.y && robot.hasDroneServo && (gametime.seconds() > 90 || gamepad2.right_bumper)){
                     commands.launchDrone();
                     sleep(250);
                 }
@@ -151,8 +151,11 @@ public class TeleOpDrive extends LinearOpMode {
                         if (armPower > .1) {
                             commands.setArmPositionRH(CenterStageEnums.ArmDirection.Up);
                         } else if (armPower < -.1) {
+                            telemetry.addData("down", true);
                             commands.setArmPositionRH(CenterStageEnums.ArmDirection.Down);
                         }
+                        sleep(250);
+
                     } else {
                         if (armPower > .1) {
                             commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
@@ -162,6 +165,10 @@ public class TeleOpDrive extends LinearOpMode {
                         }
                     }
                     sleep(250);
+
+//                    if (robot.isRoboHawks && robot.armMotorLeft.getCurrentPosition()< 20) {
+//                        commands.setArmPower(0);
+//                    }
                 }
 
                 if (robot.hasLinearActuatorMotor) {
@@ -179,13 +186,15 @@ public class TeleOpDrive extends LinearOpMode {
                 if (!robot.linearActuatorMotor.isBusy())
                     robot.linearActuatorMotor.setPower(0);
 
-                if (!robot.armMotorRight.isBusy() && robot.armMotorRight.getCurrentPosition() < 50)
-                    commands.setArmPower(0);
+//                if (!robot.armMotorRight.isBusy() && robot.armMotorRight.getCurrentPosition() < 50)
+//                    commands.setArmPower(0);
             }
 
             if (showDebug) commands.printRobotStatus();
             telemetry.addData("Gametime", gametime.seconds());
             telemetry.addData("Drive Reversed", isReverse);
+            telemetry.addData("r pos", robot.armMotorRight.getCurrentPosition());
+            telemetry.addData("l pos", robot.armMotorLeft.getCurrentPosition());
             telemetry.update();
         }
     }
