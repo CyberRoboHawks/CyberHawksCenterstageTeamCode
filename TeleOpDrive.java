@@ -23,6 +23,7 @@ public class TeleOpDrive extends LinearOpMode {
     Commands commands = new Commands(telemetry);
     boolean isLightsDisabled = false;
     boolean isReverse = false;
+    boolean isLiftInitiated = false;
     boolean showDebug = false;
     double armPower;
     double strafePower;
@@ -138,10 +139,12 @@ public class TeleOpDrive extends LinearOpMode {
                 }
 
                 if (gamepad2.b && robot.hasLinearActuatorMotor) {
-                    if (robot.linearActuatorMotor.getCurrentPosition() > 50)
-                        commands.moveLinearActuatorToPosition(commands.LINEAR_MIN, commands.LINEAR_POWER);
-                    else
-                        commands.moveLinearActuatorToPosition(commands.LINEAR_FLOOR, commands.LINEAR_POWER);
+                    if (robot.isRoboHawks){
+                        if (robot.linearActuatorMotor.getCurrentPosition() > 50)
+                            commands.moveLinearActuatorToPosition(commands.LINEAR_MIN, commands.LINEAR_POWER);
+                        else
+                            commands.moveLinearActuatorToPosition(commands.LINEAR_FLOOR, commands.LINEAR_POWER);
+                    }
                     sleep(250);
                 }
 
@@ -157,7 +160,7 @@ public class TeleOpDrive extends LinearOpMode {
                         sleep(250);
 
                     } else {
-                        if (armPower > .1) {
+                        if (armPower > .1 && !isLiftInitiated) {
                             commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
                         } else if (armPower < -.1) {
                             robot.wristServo.setPosition(robot.WRIST_UP);
@@ -172,9 +175,20 @@ public class TeleOpDrive extends LinearOpMode {
                 }
 
                 if (robot.hasLinearActuatorMotor) {
-                    if (gamepad2.right_stick_y != 0) {
-                        commands.moveLinearActuator(-gamepad2.right_stick_y, false);
+                    if (robot.isRoboHawks){
+                        if (gamepad2.right_stick_y != 0) {
+                            commands.moveLinearActuator(-gamepad2.right_stick_y, false);
+                        }
                     }
+                    else{
+                        if (gametime.seconds() >= 90 && robot.armPosition == Down) {
+                            if (gamepad2.right_stick_y != 0) {
+                                isLiftInitiated = true;
+                                commands.moveLinearActuator(-gamepad2.right_stick_y, false);
+                            }
+                        }
+                    }
+
                     // Allow override of linear actuator limits
                     if (gamepad2.right_stick_y != 0 && gamepad2.left_bumper) {
                         commands.moveLinearActuator(-gamepad2.right_stick_y, true);
@@ -185,9 +199,6 @@ public class TeleOpDrive extends LinearOpMode {
             if (robot.hasLinearActuatorMotor) {
                 if (!robot.linearActuatorMotor.isBusy())
                     robot.linearActuatorMotor.setPower(0);
-
-//                if (!robot.armMotorRight.isBusy() && robot.armMotorRight.getCurrentPosition() < 50)
-//                    commands.setArmPower(0);
             }
 
             if (showDebug) commands.printRobotStatus();

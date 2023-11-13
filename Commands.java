@@ -346,7 +346,7 @@ public class Commands extends HardwareMapping {
     }
 
     public void launchDrone() throws InterruptedException {
-        if (hasWristServo) wristServo.setPosition(WRIST_BACKDROP);
+        if (hasWristServo) wristServo.setPosition(WRIST_UP);
         if (hasDroneSecureServo) {
             droneSecureServo.setPosition(DRONE_FIRE);
             sleep(500);
@@ -414,13 +414,12 @@ public class Commands extends HardwareMapping {
         return isReverse;
     }
 
-    public void reverseWristPosition() throws InterruptedException {
+    public void reverseWristPosition() {
         if (wristServo.getPosition() < WRIST_UP - .1) {
             wristServo.setPosition(WRIST_UP);
         } else {
             wristServo.setPosition(WRIST_DOWN);
         }
-        sleep(250);
     }
 
     public void setGrabberPosition(double position) {
@@ -511,7 +510,7 @@ public class Commands extends HardwareMapping {
         setArmPower(0);
 
         if (armDirection == ArmDirection.Up && hasWristServo) {
-            wristServo.setPosition(WRIST_BACKDROP);
+            wristServo.setPosition(WRIST_UP);
         }
     }
 

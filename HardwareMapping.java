@@ -63,9 +63,9 @@ public class HardwareMapping {
     public double GRABBER_CLOSED = .8;
     public double GRABBER_OPEN = .55;
 
-    public double WRIST_UP = .7;
+    public double WRIST_UP = .57;
     public double WRIST_DOWN = .13;
-    public double WRIST_BACKDROP = .57;
+    //public double WRIST_BACKDROP = .57;
 
     CenterStageEnums.Position armPosition = Down;
     HardwareMap hardwareMap = null;
