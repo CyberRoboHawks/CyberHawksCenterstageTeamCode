@@ -30,12 +30,12 @@ public class HardwareMapping {
     public boolean hasDroneSecureServo = false;
     public boolean hasGrabberDistance = false;
     public boolean hasGrabberServo = false;
-    public boolean hasGripperSlideServo = false;
+
     public boolean hasLinearActuatorMotor = false;
     public boolean hasPixelServo = false;
     public boolean hasWristServo = false;
     //endregion
-    public boolean isRoboHawks = true;
+
     public boolean isReverse = false;
     public DcMotor armMotorRight = null;
     public DcMotor armMotorLeft = null;
@@ -50,12 +50,12 @@ public class HardwareMapping {
     public Servo droneServo = null;
     public Servo droneSecureServo = null;
     public Servo grabberServo = null;
-    public CRServo gripperSlideServo = null;
+  //  public CRServo gripperSlideServo = null;
     public Servo pixelServo = null;
     public Servo wristServo = null;
     public TouchSensor armDownSensor = null;
     public IMU imu = null;
-    public BNO055IMU imuRoboHawks = null;
+
     public int armPositionTarget = 0;
 
     public RevBlinkinLedDriver blinkinLedDriver;
@@ -71,10 +71,9 @@ public class HardwareMapping {
     HardwareMap hardwareMap = null;
 
     /* Initialize standard Hardware interfaces */
-    public void init(HardwareMap hardware) {
+    public void init(HardwareMap hardware, boolean isTeleOp) {
         // Save reference to Hardware map
         hardwareMap = hardware;
-
 
         if (canGetDevice("blinkin")) {
             blinkinLedDriver = hardwareMap.get(RevBlinkinLedDriver.class, "blinkin");
@@ -127,13 +126,15 @@ public class HardwareMapping {
             hasDroneServo = true;
         }
         if (canGetDevice("droneSecureServo")) {
-            droneSecureServo = setupServo("droneSecureServo", .2);
+            if (isTeleOp)
+                droneSecureServo = setupServo("droneSecureServo", Commands.DRONE_SECURE);
+            else
+                droneSecureServo = setupServo("droneSecureServo", Commands.DRONE_FIRE);
             hasDroneSecureServo = true;
         }
         if (canGetDevice("grabberServo")) {
             grabberServo = setupServo("grabberServo", GRABBER_CLOSED);
             hasGrabberServo = true;
-            isRoboHawks = false;
         }
         if (canGetDevice("pixelServo")) {
             pixelServo = setupServo("pixelServo", 0.2);
@@ -145,11 +146,6 @@ public class HardwareMapping {
             hasWristServo = true;
         }
 
-        if (canGetDevice("gripperSlideServo")) {
-            gripperSlideServo = setupCRServo("gripperSlideServo", 0.00);
-            gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
-            hasGripperSlideServo = true;
-        }
         //endregion
 
         if (canGetDevice("grabberDistance")) {
@@ -162,14 +158,7 @@ public class HardwareMapping {
             hasLinearActuatorMotor = true;
         }
 
-        if (isRoboHawks) {
-            BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
-            parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
-            imuRoboHawks = hardwareMap.get(BNO055IMU.class, "imu");
-            imuRoboHawks.initialize(parameters);
-        } else {
-            imu = hardwareMap.get(IMU.class, "imu");
-        }
+        imu = hardwareMap.get(IMU.class, "imu");
     }
 
     public void stopAndRestMotorEncoders(DcMotor motor) {

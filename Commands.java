@@ -28,13 +28,15 @@ public class Commands extends HardwareMapping {
     static final double WHEEL_DIAMETER_INCHES = 3.75;   // For figuring circumference
     static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV) / (WHEEL_DIAMETER_INCHES * Math.PI);
     static double DRONE_SECURE = .5;
-    static double DRONE_FIRE = .15;
+    static double DRONE_FIRE = .25;
     private final ElapsedTime runtime = new ElapsedTime();
     float[] hsvValues = {0F, 0F, 0F};
     int LINEAR_MIN = 0;
-    int LINEAR_FLOOR = 3400;
-    int LINEAR_MAX = 12500;
+    int LINEAR_FLOOR = 1100;
+    int LINEAR_MAX = 13000;
+//    int LINEAR_MAX_RH = 2500;
     int LINEAR_JUMP = 500;
+//    int LINEAR_JUMP_RH = 250;
     double LINEAR_POWER = 1;
     Telemetry telemetry;
 
@@ -55,18 +57,14 @@ public class Commands extends HardwareMapping {
             if (distanceCm < 10) {
                 stepDistance = 1;
             }
-             if (isRoboHawks){
-                 if (isReverse)
-                     driveForward(power, stepDistance, 1);
-                 else
-                     driveBackwards(power, stepDistance, 1);
-             }else{
-                 if (isReverse)
-                     driveBackwards(power, stepDistance, 1);
-                 else
-                    driveForward(power, stepDistance, 1);
-             }
+
+             if (isReverse)
+                 driveBackwards(power, stepDistance, 1);
+             else
+                driveForward(power, stepDistance, 1);
             distanceCm = grabberDistance.getDistance(DistanceUnit.CM);
+             telemetry.addData("distance", distanceCm);
+             telemetry.update();
         }
     }
 
@@ -302,21 +300,21 @@ public class Commands extends HardwareMapping {
     }
 
     public double getAngle() {
-        if (isRoboHawks) {
-            return imuRoboHawks.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
-        } else {
+//        if (isRoboHawks) {
+//            return imuRoboHawks.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+//        } else {
             return imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
-        }
+//        }
     }
 
     private double getRemainingAngle(double targetAngle) {
         // calculate angle in -179 to +180 range  (
         Orientation angles;
-        if (isRoboHawks) {
-            angles = imuRoboHawks.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-        } else {
+//        if (isRoboHawks) {
+//            angles = imuRoboHawks.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+//        } else {
             angles = imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-        }
+//        }
         return targetAngle - angles.firstAngle;
     }
 
@@ -354,21 +352,24 @@ public class Commands extends HardwareMapping {
         droneServo.setPosition(1);
         sleep(500);
         droneServo.setPosition(0);
-        if (hasWristServo) wristServo.setPosition(WRIST_UP);
+        //if (hasWristServo) wristServo.setPosition(WRIST_UP);
     }
 
     public void moveLinearActuator(double linearActuatorPower, boolean override) {
         int currentPosition = linearActuatorMotor.getCurrentPosition();
         int targetPostion = currentPosition;
         double power = 0;
+        int max = LINEAR_MAX;
+        int jump = LINEAR_JUMP;
 
-        if (linearActuatorPower > 0 && (currentPosition < LINEAR_MAX || override)) {
-            targetPostion += LINEAR_JUMP;
-            if (targetPostion > LINEAR_MAX && !override)
-                targetPostion = LINEAR_MAX;
+        if (linearActuatorPower > 0 && (currentPosition < max || override)) {
+            targetPostion += jump;
+
+            if (targetPostion > max && !override)
+                targetPostion = max;
             power = LINEAR_POWER;
         } else if (linearActuatorPower < 0 && (currentPosition > LINEAR_MIN || override)) {
-            targetPostion -= LINEAR_JUMP;
+            targetPostion -= jump;
             if (targetPostion < LINEAR_MIN && !override)
                 targetPostion = LINEAR_MIN;
             power = LINEAR_POWER;
@@ -397,11 +398,9 @@ public class Commands extends HardwareMapping {
         telemetry.addData("hasDroneSecureServo: ", hasDroneSecureServo);
         telemetry.addData("hasGrabberDistance: ", hasGrabberDistance);
         telemetry.addData("hasGrabberServo: ", hasGrabberServo);
-        telemetry.addData("hasGripperSlideServo: ", hasGripperSlideServo);
         telemetry.addData("hasLinearActuatorMotor: ", hasLinearActuatorMotor);
         telemetry.addData("hasPixelServo: ", hasPixelServo);
         telemetry.addData("hasWristServo: ", hasWristServo);
-        telemetry.addData("isRoboHawks", isRoboHawks);
     }
 
     public boolean reverseDriveMotorDirection() {
@@ -471,7 +470,6 @@ public class Commands extends HardwareMapping {
             sleep(750);
             setArmPower(0);
         }
-
     }
 
     public void setArmPosition(ArmDirection armDirection, double timeout) throws InterruptedException {

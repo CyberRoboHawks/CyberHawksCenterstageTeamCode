@@ -6,7 +6,6 @@ import static org.firstinspires.ftc.teamcode.CenterStageEnums.Position.Up;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -16,7 +15,7 @@ import org.firstinspires.ftc.teamcode.CenterStageEnums.Position;
 //@Disabled
 public class TeleOpDrive extends LinearOpMode {
     static final double STANDARD_DRIVE_SPEED = .4;
-    static final double TURBO_DRIVE_SPEED = .8;
+    static final double TURBO_DRIVE_SPEED = .9;
 
     private final ElapsedTime gametime = new ElapsedTime();
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
@@ -31,15 +30,11 @@ public class TeleOpDrive extends LinearOpMode {
     double rotatePower;
     double offsetHeading = 0;
 
-
     @Override
     public void runOpMode() throws InterruptedException {
         // Initialize the hardware variables.
-        robot.init(hardwareMap);
-        commands.init(hardwareMap);
-        if (robot.isRoboHawks) {
-            commands.reverseDriveMotorDirection();
-        }
+        robot.init(hardwareMap, true);
+        commands.init(hardwareMap, true);
 
         telemetry.addData("Status:", "Ready");
         telemetry.update();
@@ -104,19 +99,6 @@ public class TeleOpDrive extends LinearOpMode {
                 if (gamepad2.guide) toggleDebugMessages();
                 if (gamepad2.back) toggleLeds();
 
-                if (commands.hasGripperSlideServo) {
-                    if (gamepad2.dpad_left) {
-                        robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
-                        robot.gripperSlideServo.setPower(.5);
-                        sleep(100);
-                    } else if (gamepad2.dpad_right) {
-                        robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.FORWARD);
-                        robot.gripperSlideServo.setPower(.5);
-                        sleep(100);
-                    }
-                    robot.gripperSlideServo.setPower(0);
-                }
-
                 if (gamepad2.a && robot.hasGrabberServo) {
                     if (robot.grabberServo.getPosition() < robot.GRABBER_CLOSED) {
                         commands.setGrabberPosition(robot.GRABBER_CLOSED);
@@ -127,7 +109,7 @@ public class TeleOpDrive extends LinearOpMode {
                 }
 
                 // prevent early launch with gameTimer check for endgame
-                if (gamepad2.y && robot.hasDroneServo && (gametime.seconds() > 90 || gamepad2.right_bumper)){
+                if (gamepad2.y && robot.hasDroneServo && (gametime.seconds() > 90 || gamepad2.right_bumper)) {
                     commands.launchDrone();
                     sleep(250);
                 }
@@ -138,54 +120,23 @@ public class TeleOpDrive extends LinearOpMode {
                     sleep(250);
                 }
 
-                if (gamepad2.b && robot.hasLinearActuatorMotor) {
-                    if (robot.isRoboHawks){
-                        if (robot.linearActuatorMotor.getCurrentPosition() > 50)
-                            commands.moveLinearActuatorToPosition(commands.LINEAR_MIN, commands.LINEAR_POWER);
-                        else
-                            commands.moveLinearActuatorToPosition(commands.LINEAR_FLOOR, commands.LINEAR_POWER);
-                    }
-                    sleep(250);
-                }
-
                 armPower = -gamepad2.left_stick_y;
                 if (armPower != 0) {
-                    if (robot.isRoboHawks) {
-                        if (armPower > .1) {
-                            commands.setArmPositionRH(CenterStageEnums.ArmDirection.Up);
-                        } else if (armPower < -.1) {
-                            telemetry.addData("down", true);
-                            commands.setArmPositionRH(CenterStageEnums.ArmDirection.Down);
-                        }
-                        sleep(250);
-
-                    } else {
-                        if (armPower > .1 && !isLiftInitiated) {
-                            commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
-                        } else if (armPower < -.1) {
-                            robot.wristServo.setPosition(robot.WRIST_UP);
-                            commands.setArmPosition(CenterStageEnums.ArmDirection.Down, 3);
-                        }
+                    if (armPower > .1 && !isLiftInitiated) {
+                        commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
+                    } else if (armPower < -.1) {
+                        robot.wristServo.setPosition(robot.WRIST_UP);
+                        commands.setArmPosition(CenterStageEnums.ArmDirection.Down, 3);
                     }
-                    sleep(250);
 
-//                    if (robot.isRoboHawks && robot.armMotorLeft.getCurrentPosition()< 20) {
-//                        commands.setArmPower(0);
-//                    }
+                    sleep(250);
                 }
 
                 if (robot.hasLinearActuatorMotor) {
-                    if (robot.isRoboHawks){
+                    if (gametime.seconds() >= 90 && robot.armPosition == Down) {
                         if (gamepad2.right_stick_y != 0) {
+                            isLiftInitiated = true;
                             commands.moveLinearActuator(-gamepad2.right_stick_y, false);
-                        }
-                    }
-                    else{
-                        if (gametime.seconds() >= 90 && robot.armPosition == Down) {
-                            if (gamepad2.right_stick_y != 0) {
-                                isLiftInitiated = true;
-                                commands.moveLinearActuator(-gamepad2.right_stick_y, false);
-                            }
                         }
                     }
 
@@ -206,6 +157,8 @@ public class TeleOpDrive extends LinearOpMode {
             telemetry.addData("Drive Reversed", isReverse);
             telemetry.addData("r pos", robot.armMotorRight.getCurrentPosition());
             telemetry.addData("l pos", robot.armMotorLeft.getCurrentPosition());
+            telemetry.addData("linear", robot.linearActuatorMotor.getCurrentPosition());
+            telemetry.addData("distance", robot.grabberDistance.getDistance(DistanceUnit.CM));
             telemetry.update();
         }
     }

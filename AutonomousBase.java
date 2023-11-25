@@ -35,23 +35,41 @@ public abstract class AutonomousBase extends LinearOpMode {
     VisionPortal visionPortal = null;
     double startingAngle;
     double targetDistance = 90;
+    private TfodProcessor tfod;
+    private static final String TFOD_MODEL_ASSEST = "CH.tflite";
+    private static final String[] LABELS = {
+            "Blue Prop",
+            "Red Prop"
+    };
+
+    private int CAMERA_WIDTH = 864;
+    private int CAMERA_HEIGHT = 480;
 
     public void startupInit() {
-        commands.init(hardwareMap);
-        robot.init(hardwareMap);
+        commands.init(hardwareMap, false);
+        robot.init(hardwareMap, false);
 
         if (robot.hasCamera) {
+            tfod = new TfodProcessor.Builder()
+                    .setModelAssetName(TFOD_MODEL_ASSEST)
+                    .setModelLabels(LABELS)
+                    .build();
+
+            tfod.setMinResultConfidence(.5f);
             tagProcessor = new AprilTagProcessor.Builder()
                     .setDrawCubeProjection(true)
                     .setDrawTagID(true)
                     .build();
             visionPortal = new VisionPortal.Builder()
                     .addProcessor(tagProcessor)
+                    .addProcessor(tfod)
                     .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
-                    //.setCameraResolution(new Size(800, 600))
-                    .setCameraResolution(new Size(1920, 1080))
+                    .setCameraResolution(new Size(CAMERA_WIDTH, CAMERA_HEIGHT))
                     .build();
         }
+
+        //initially turn off the tagProcessor
+        //visionPortal.setProcessorEnabled(tagProcessor, false);
 
         telemetry.addData("Status:", "ready");
         startingAngle = commands.getAngle();
@@ -72,15 +90,23 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.setAutoClear(false);
         telemetry.addData("Color: ", color);
 
-        // Move off the start
-        commands.driveForward(DRIVE_SPEED, 26, 3);
-
         // Identify pixel/team element placement
         TapeLocation tapeLocation = TapeLocation.Center;
+
+            tapeLocation = getTfodRecognitions(tfod);
+            if (tapeLocation == TapeLocation.None) tapeLocation = TapeLocation.Center;
+
         telemetry.addData("Tape location: ", tapeLocation);
         AprilTag aprilTag = GetTagID(color, tapeLocation);
         telemetry.addData("April tag: ", aprilTag);
         telemetry.update();
+
+        // Move off the start
+        commands.driveForward(DRIVE_SPEED, 26, 3);
+
+        // Turn AprilTag processor ON and tfod processor OFF
+       // visionPortal.setProcessorEnabled(tagProcessor, true);
+        visionPortal.setProcessorEnabled(tfod, false);
 
         // Turn to tape line
         TurnTowardsSpikeMark(color, tapeLocation);
@@ -92,11 +118,12 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Orient for pixel placement
         if (tapeLocation != TapeLocation.Left)
             commands.driveBackwards(DRIVE_SPEED_FAST, 3, 3);
-        else if (tapeLocation == TapeLocation.Left)
-            commands.driveBackwards(DRIVE_SPEED_FAST, 2, 3);
 
         // Deliver ground pixel
         commands.deliverSpikeMarkPixel();
+
+        if (tapeLocation == TapeLocation.Left)
+            commands.driveBackwards(DRIVE_SPEED_FAST, 2, 3);
 
         sleep(250);
         if (tapeLocation == TapeLocation.Center) {
@@ -109,13 +136,13 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Orient towards backdrop red/blue
         if (color == TapeColor.Red && tapeLocation == TapeLocation.Center ||
                 color == TapeColor.Red && tapeLocation == TapeLocation.Left) {
-            commands.spinRight(DRIVE_SPEED, -88, 5);
+            commands.spinRight(DRIVE_SPEED_FAST, -89, 5);
             commands.strafeLeft(DRIVE_SPEED_FAST, 2, 2);
         } else if (color == TapeColor.Blue) {
             if (tapeLocation == TapeLocation.Right) {
                 commands.driveBackwards(DRIVE_SPEED_FAST, 5, 3);
             }
-            commands.spinLeft(DRIVE_SPEED, 88, 5);
+            commands.spinLeft(DRIVE_SPEED, 89, 5);
             if (tapeLocation == TapeLocation.Center) {
                 commands.strafeRight(DRIVE_SPEED_FAST, 2, 2);
             }
@@ -125,8 +152,8 @@ public abstract class AutonomousBase extends LinearOpMode {
         runtime.reset();
         boolean tagsFound = false;
         while (!isStopRequested() && robot.hasCamera && runtime.seconds() < 8 && !tagsFound) {
-            tagsFound = GetCloserToAprilTags(color, 6);
-            targetDistance -= 6;
+            tagsFound = GetCloserToAprilTags(color, 8);
+            targetDistance -= 8;
             sleep(500);
             telemetry.addData("target distance: ", targetDistance);
             telemetry.addData("tags found: ", tagsFound);
@@ -146,40 +173,8 @@ public abstract class AutonomousBase extends LinearOpMode {
             }
         }
 
-        // RoboHawks - spin 180 degrees before deliver pixel on backdrop
-        if (robot.isRoboHawks && tagsFound ) {
-            if (color == TapeColor.Red)
-                commands.spinLeft(DRIVE_SPEED_FAST, 90, 6);
-            else
-                commands.spinRight(DRIVE_SPEED_FAST, -90, 6);
-
-            commands.reverseDriveMotorDirection();
-
-            //Raise arm
-            commands.setArmPositionRH(CenterStageEnums.ArmDirection.Up);
-            commands.moveLinearActuatorToPosition(commands.LINEAR_FLOOR, commands.LINEAR_POWER);
-
-            sleep(250);
-            commands.approachBackdrop(6, 4);
-
-            // open grabber
-            robot.gripperSlideServo.setDirection(DcMotorSimple.Direction.REVERSE);
-            robot.gripperSlideServo.setPower(.5);
-            sleep(250);
-            robot.gripperSlideServo.setPower(0);
-
-            // reverse the linear actuator
-            commands.moveLinearActuatorToPosition(commands.LINEAR_MIN, commands.LINEAR_POWER);
-            sleep(1300);
-
-            commands.setArmPositionRH(CenterStageEnums.ArmDirection.Down);
-            sleep(250);
-            commands.driveBackwards(DRIVE_SPEED_FAST, 4, 2);
-            commands.setArmPower(0);
-        }
-
-        // Cyberhawks - deliver pixel on backdrop
-        if (!robot.isRoboHawks && tagsFound) {
+        // Deliver pixel on backdrop
+        if (tagsFound) {
             commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
             sleep(250);
             commands.approachBackdrop(6, 10);
@@ -206,40 +201,37 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     private TapeLocation getTfodRecognitions(TfodProcessor tfod) {
-
         List<Recognition> currentRecognitions = tfod.getRecognitions();
-        telemetry.addData("recognitions", currentRecognitions.size());
+        //telemetry.addData("recognitions", currentRecognitions.size());
         int i = 0;
-        telemetry.addData("recognition", currentRecognitions);
+       // telemetry.addData("recognition", currentRecognitions);
         while (i < 10 && (currentRecognitions == null || currentRecognitions.size() == 0)) {
-            currentRecognitions = tfod.getFreshRecognitions();
-            telemetry.addData("inside recognitions", i);
+            currentRecognitions = tfod.getRecognitions();
+           // telemetry.addData("inside recognitions", i);
             //telemetry.addData("recognitions", currentRecognitions.size());
             telemetry.update();
-            sleep(100);
+            sleep(200);
             i++;
         }
-        //if (currentRecognitions == null) return TapeLocation.None;
+        if (currentRecognitions == null) return TapeLocation.None;
 
         // Step through the list of recognitions and display info for each one.
         for (Recognition recognition : currentRecognitions) {
             double x = (recognition.getLeft() + recognition.getRight()) / 2;
             double y = (recognition.getTop() + recognition.getBottom()) / 2;
 
-            telemetry.addData("", " ");
-            telemetry.addData("Image", "%s (%.0f %% Conf.)", recognition.getLabel(), recognition.getConfidence() * 100);
-            telemetry.addData("- Position", "%.0f / %.0f", x, y);
-            telemetry.addData("- Size", "%.0f x %.0f", recognition.getWidth(), recognition.getHeight());
-            telemetry.update();
-            sleep(1000);
-            if (x <= 200) return TapeLocation.Left;
-            if (x > 200 && x < 400) return TapeLocation.Center;
-            if (x >= 400) return TapeLocation.Right;
+//            telemetry.addData("", " ");
+//            telemetry.addData("Image", "%s (%.0f %% Conf.)", recognition.getLabel(), recognition.getConfidence() * 100);
+//            telemetry.addData("- Position", "%.0f / %.0f", x, y);
+//            telemetry.addData("- Size", "%.0f x %.0f", recognition.getWidth(), recognition.getHeight());
+//            telemetry.update();
+            //sleep(1000);
+            int cameraLeft = CAMERA_WIDTH/3;
+            int cameraRight = CAMERA_WIDTH/3 *2 ;
 
-
-//            if (x <= 650) return TapeLocation.Left;
-//            if (x > 650 && x < 1300) return TapeLocation.Center;
-//            if (x >= 1300) return TapeLocation.Right;
+            if (x <= cameraLeft) return TapeLocation.Left;
+            if (x > cameraLeft && x < cameraRight) return TapeLocation.Center;
+            if (x >= cameraRight) return TapeLocation.Right;
         }   // end for() loop
 
         return TapeLocation.None;
@@ -291,7 +283,7 @@ public abstract class AutonomousBase extends LinearOpMode {
 
         if ((direction == Right && (aprilTag == AprilTag.RedLeft || aprilTag == AprilTag.BlueLeft)) ||
                 (direction == Left && (aprilTag == AprilTag.RedRight || aprilTag == AprilTag.BlueRight)))
-            distance = 30;
+            distance = 33;
 
         return distance;
     }
