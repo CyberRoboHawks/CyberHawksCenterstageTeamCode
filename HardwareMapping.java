@@ -137,7 +137,7 @@ public class HardwareMapping {
             hasGrabberServo = true;
         }
         if (canGetDevice("pixelServo")) {
-            pixelServo = setupServo("pixelServo", 0.2);
+            pixelServo = setupServo("pixelServo", 0.23);
             hasPixelServo = true;
         }
 

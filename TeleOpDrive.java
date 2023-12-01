@@ -78,6 +78,10 @@ public class TeleOpDrive extends LinearOpMode {
                     sleep(250);
                 }
 
+                if (gamepad1.b){
+                    commands.deliverSpikeMarkPixel();
+                    sleep(250);
+                }
                 // Turbo driving
                 if (gamepad1.left_bumper || gamepad1.right_bumper) {
                     drivePower = TURBO_DRIVE_SPEED;  // change drive speed to the turbo speed variable

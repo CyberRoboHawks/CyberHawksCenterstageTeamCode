@@ -7,7 +7,6 @@ import android.util.Size;
 
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -16,19 +15,22 @@ import org.firstinspires.ftc.teamcode.CenterStageEnums.AprilTag;
 import org.firstinspires.ftc.teamcode.CenterStageEnums.TapeColor;
 import org.firstinspires.ftc.teamcode.CenterStageEnums.TapeLocation;
 import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.tfod.TfodProcessor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public abstract class AutonomousBase extends LinearOpMode {
     static final float DRIVE_SPEED = 0.3f;
     static final float DRIVE_SPEED_FAST = 0.6f;
-
+    private static final String TFOD_MODEL_ASSEST = "CH.tflite";
+    private static final String[] LABELS = {
+            "Blue Prop",
+            "Red Prop"
+    };
     private final ElapsedTime runtime = new ElapsedTime();
-
+    private final int CAMERA_WIDTH = 864;
+    private final int CAMERA_HEIGHT = 480;
     Commands commands = new Commands(telemetry);
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
     AprilTagProcessor tagProcessor = null;
@@ -36,14 +38,6 @@ public abstract class AutonomousBase extends LinearOpMode {
     double startingAngle;
     double targetDistance = 90;
     private TfodProcessor tfod;
-    private static final String TFOD_MODEL_ASSEST = "CH.tflite";
-    private static final String[] LABELS = {
-            "Blue Prop",
-            "Red Prop"
-    };
-
-    private int CAMERA_WIDTH = 864;
-    private int CAMERA_HEIGHT = 480;
 
     public void startupInit() {
         commands.init(hardwareMap, false);
@@ -93,8 +87,8 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Identify pixel/team element placement
         TapeLocation tapeLocation = TapeLocation.Center;
 
-            tapeLocation = getTfodRecognitions(tfod);
-            if (tapeLocation == TapeLocation.None) tapeLocation = TapeLocation.Center;
+        tapeLocation = getTfodRecognitions(tfod);
+        if (tapeLocation == TapeLocation.None) tapeLocation = TapeLocation.Center;
 
         telemetry.addData("Tape location: ", tapeLocation);
         AprilTag aprilTag = GetTagID(color, tapeLocation);
@@ -105,7 +99,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         commands.driveForward(DRIVE_SPEED, 26, 3);
 
         // Turn AprilTag processor ON and tfod processor OFF
-       // visionPortal.setProcessorEnabled(tagProcessor, true);
+        // visionPortal.setProcessorEnabled(tagProcessor, true);
         visionPortal.setProcessorEnabled(tfod, false);
 
         // Turn to tape line
@@ -127,7 +121,7 @@ public abstract class AutonomousBase extends LinearOpMode {
 
         sleep(250);
         if (tapeLocation == TapeLocation.Center) {
-            commands.driveBackwards(DRIVE_SPEED_FAST, 4, 3);
+            commands.driveBackwards(DRIVE_SPEED_FAST, 5, 3);
         }
         if (tapeLocation == TapeLocation.Left) {
             commands.strafeRight(DRIVE_SPEED_FAST, 9, 3);
@@ -151,13 +145,10 @@ public abstract class AutonomousBase extends LinearOpMode {
 
         runtime.reset();
         boolean tagsFound = false;
-        while (!isStopRequested() && robot.hasCamera && runtime.seconds() < 8 && !tagsFound) {
-            tagsFound = GetCloserToAprilTags(color, 8);
+        while (!isStopRequested() && robot.hasCamera && runtime.seconds() < 7 && !tagsFound) {
+            tagsFound = GetCloserToAprilTags(color, 8, aprilTag);
             targetDistance -= 8;
             sleep(500);
-            telemetry.addData("target distance: ", targetDistance);
-            telemetry.addData("tags found: ", tagsFound);
-            telemetry.update();
         }
 
         runtime.reset();
@@ -204,10 +195,10 @@ public abstract class AutonomousBase extends LinearOpMode {
         List<Recognition> currentRecognitions = tfod.getRecognitions();
         //telemetry.addData("recognitions", currentRecognitions.size());
         int i = 0;
-       // telemetry.addData("recognition", currentRecognitions);
+        // telemetry.addData("recognition", currentRecognitions);
         while (i < 10 && (currentRecognitions == null || currentRecognitions.size() == 0)) {
             currentRecognitions = tfod.getRecognitions();
-           // telemetry.addData("inside recognitions", i);
+            // telemetry.addData("inside recognitions", i);
             //telemetry.addData("recognitions", currentRecognitions.size());
             telemetry.update();
             sleep(200);
@@ -226,8 +217,8 @@ public abstract class AutonomousBase extends LinearOpMode {
 //            telemetry.addData("- Size", "%.0f x %.0f", recognition.getWidth(), recognition.getHeight());
 //            telemetry.update();
             //sleep(1000);
-            int cameraLeft = CAMERA_WIDTH/3;
-            int cameraRight = CAMERA_WIDTH/3 *2 ;
+            int cameraLeft = CAMERA_WIDTH / 3;
+            int cameraRight = CAMERA_WIDTH / 3 * 2;
 
             if (x <= cameraLeft) return TapeLocation.Left;
             if (x > cameraLeft && x < cameraRight) return TapeLocation.Center;
@@ -237,11 +228,8 @@ public abstract class AutonomousBase extends LinearOpMode {
         return TapeLocation.None;
     }
 
-    private boolean GetCloserToAprilTags(TapeColor color, int distance) {
-        ArrayList<AprilTagDetection> detections = tagProcessor.getFreshDetections();
-        boolean tagsFound = detections.size() > 0;
-        telemetry.addData("detections: ", detections.size());
-        telemetry.update();
+    private boolean GetCloserToAprilTags(TapeColor color, int distance, AprilTag aprilTag) throws InterruptedException {
+        boolean tagsFound = commands.followTag(tagProcessor, CenterStageEnums.FollowDirection.Straight, aprilTag.getValue()) > 0;
         if (!tagsFound)
             commands.driveForward(DRIVE_SPEED_FAST, distance, 3);
 

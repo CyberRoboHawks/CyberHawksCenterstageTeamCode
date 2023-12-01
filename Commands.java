@@ -63,8 +63,6 @@ public class Commands extends HardwareMapping {
              else
                 driveForward(power, stepDistance, 1);
             distanceCm = grabberDistance.getDistance(DistanceUnit.CM);
-             telemetry.addData("distance", distanceCm);
-             telemetry.update();
         }
     }
 
@@ -92,10 +90,8 @@ public class Commands extends HardwareMapping {
         pixelServo.setPosition(.4);
         sleep(100);
         pixelServo.setPosition(.6);
-        sleep(100);
-        pixelServo.setPosition(.8);
         sleep(300);
-        pixelServo.setPosition(.2);
+        pixelServo.setPosition(.23);
     }
 
     public void driveBackwards(double power, double distanceInInches, double timeout) {
