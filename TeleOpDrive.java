@@ -9,13 +9,12 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.teamcode.CenterStageEnums.Position;
 
 @TeleOp(name = "TeleOpDrive", group = "TeleOp") // add this code
 //@Disabled
 public class TeleOpDrive extends LinearOpMode {
-    static final double STANDARD_DRIVE_SPEED = .4;
-    static final double TURBO_DRIVE_SPEED = .9;
+    static final double STANDARD_DRIVE_SPEED = .5;
+    static final double TURBO_DRIVE_SPEED = 1;
 
     private final ElapsedTime gametime = new ElapsedTime();
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
@@ -55,9 +54,10 @@ public class TeleOpDrive extends LinearOpMode {
                         commands.stopAndRestMotorEncoders(robot.armMotorRight);
                         commands.stopAndRestMotorEncoders(robot.armMotorLeft);
                     }
-                } else {
-                    robot.armPosition = Up;
                 }
+//                else {
+//                    robot.armPosition = Up;
+//                }
             }
             setLedColors();
 
@@ -73,7 +73,7 @@ public class TeleOpDrive extends LinearOpMode {
                     sleep(250);
                 }
 
-                if (gamepad1.a && robot.armPosition == Position.Up) {
+                if (gamepad1.a && robot.armPosition == Up) {
                     commands.approachBackdrop(3, 2);
                     sleep(250);
                 }
@@ -119,7 +119,7 @@ public class TeleOpDrive extends LinearOpMode {
                 }
 
                 if (gamepad2.x && robot.hasWristServo) {
-                    if (robot.hasArmDownSensor && robot.armDownSensor.isPressed())
+                    if (robot.armPosition == Down)
                         commands.reverseWristPosition();
                     sleep(250);
                 }
@@ -128,6 +128,7 @@ public class TeleOpDrive extends LinearOpMode {
                 if (armPower != 0) {
                     if (armPower > .1 && !isLiftInitiated) {
                         commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
+                        robot.armPosition = Up;
                     } else if (armPower < -.1) {
                         robot.wristServo.setPosition(robot.WRIST_UP);
                         commands.setArmPosition(CenterStageEnums.ArmDirection.Down, 3);
@@ -185,7 +186,7 @@ public class TeleOpDrive extends LinearOpMode {
         if (robot.hasBlinkin) {
             if (isLightsDisabled) {
                 robot.blinkinLedDriver.setPattern(BlinkinPattern.BLACK);
-            } else if (robot.armPosition == Position.Up
+            } else if (robot.armPosition == Up
                     && robot.hasGrabberDistance
                     && robot.grabberDistance.getDistance(DistanceUnit.CM) <= GRABBER_TARGET_DISTANCE) {
                 robot.blinkinLedDriver.setPattern(BlinkinPattern.GREEN);
