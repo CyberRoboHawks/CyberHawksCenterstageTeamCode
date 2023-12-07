@@ -164,6 +164,9 @@ public abstract class AutonomousBase extends LinearOpMode {
             }
         }
 
+        //final turn towards the backdrop
+        faceTowardsBackdrop(color);
+
         // Deliver pixel on backdrop
         if (tagsFound) {
             commands.setArmPosition(CenterStageEnums.ArmDirection.Up, 3);
@@ -233,6 +236,10 @@ public abstract class AutonomousBase extends LinearOpMode {
         if (!tagsFound)
             commands.driveForward(DRIVE_SPEED_FAST, distance, 3);
 
+        faceTowardsBackdrop(color);
+        return tagsFound;
+    }
+    private void faceTowardsBackdrop(TapeColor color){
         if (color == TapeColor.Blue) {
             if (commands.getAngle() > 90) commands.spinRight(DRIVE_SPEED, 90, 2);
             else if (commands.getAngle() < 90) commands.spinLeft(DRIVE_SPEED, 90, 2);
@@ -241,7 +248,6 @@ public abstract class AutonomousBase extends LinearOpMode {
             if (commands.getAngle() > -90) commands.spinRight(DRIVE_SPEED, -90, 2);
             else if (commands.getAngle() < -90) commands.spinLeft(DRIVE_SPEED, -90, 2);
         }
-        return tagsFound;
     }
 
     private void TurnTowardsSpikeMark(TapeColor color, TapeLocation tapeLocation) {

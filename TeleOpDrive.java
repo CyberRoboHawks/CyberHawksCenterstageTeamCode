@@ -14,7 +14,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 //@Disabled
 public class TeleOpDrive extends LinearOpMode {
     static final double STANDARD_DRIVE_SPEED = .5;
-    static final double TURBO_DRIVE_SPEED = 1;
+    static final double TURBO_DRIVE_SPEED = .9;
 
     private final ElapsedTime gametime = new ElapsedTime();
     HardwareMapping robot = new HardwareMapping();   // Use our hardware mapping
